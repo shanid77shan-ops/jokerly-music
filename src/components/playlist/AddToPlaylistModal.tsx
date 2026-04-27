@@ -36,6 +36,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
     });
     setAdded((prev) => new Set(prev).add(playlist.id));
     setAdding(null);
+    setTimeout(onClose, 700);
   };
 
   return (
