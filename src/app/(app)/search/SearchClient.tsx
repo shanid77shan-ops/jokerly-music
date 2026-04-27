@@ -9,9 +9,14 @@ import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import { LfmTrack, LfmArtist, LfmAlbum, lfmArtistName, lfmImage } from "@/lib/lastfm";
 import ArtistDetailSheet from "@/components/music/ArtistDetailSheet";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
+import { useToastStore } from "@/store/toast";
 import Image from "next/image";
 
 type Tab = "track" | "artist" | "album";
+
+interface SearchCache { tracks: LfmTrack[]; artists: LfmArtist[]; albums: LfmAlbum[] }
+const searchCache = new Map<string, SearchCache>();
+const suggestCache = new Map<string, Suggestion[]>();
 
 const TABS: { label: string; value: Tab }[] = [
   { label: "Tracks", value: "track" },
@@ -78,6 +83,7 @@ export default function SearchClient() {
   const suggestBoxRef = useRef<HTMLDivElement>(null);
 
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
+  const { toast } = useToastStore();
 
   // Debounced suggestions fetch
   useEffect(() => {
@@ -87,6 +93,14 @@ export default function SearchClient() {
       setShowSuggestions(false);
       return;
     }
+
+    const cached = suggestCache.get(query.trim().toLowerCase());
+    if (cached) {
+      setSuggestions(cached);
+      setShowSuggestions(true);
+      return;
+    }
+
     setSuggestionsLoading(true);
     suggestTimer.current = setTimeout(async () => {
       try {
@@ -107,7 +121,9 @@ export default function SearchClient() {
           sub: a.listeners ? `${Number(a.listeners).toLocaleString()} listeners` : "Artist",
           image: lfmImage(a.image, "small"),
         }));
-        setSuggestions([...trackSugs, ...artistSugs]);
+        const combined = [...trackSugs, ...artistSugs];
+        suggestCache.set(query.trim().toLowerCase(), combined);
+        setSuggestions(combined);
         setShowSuggestions(true);
       } catch {
         setSuggestions([]);
@@ -134,21 +150,36 @@ export default function SearchClient() {
 
   const handleSearch = useCallback(async (q = query) => {
     if (!q.trim()) return;
-    setLoading(true);
     setSearched(true);
     setShowSuggestions(false);
     setSimilarSeed(null);
     setSimilarTracks([]);
+
+    const key = q.trim().toLowerCase();
+    const cached = searchCache.get(key);
+    if (cached) {
+      setTracks(cached.tracks);
+      setArtists(cached.artists);
+      setAlbums(cached.albums);
+      return;
+    }
+
+    setLoading(true);
     try {
       const res = await fetch(`/api/lastfm/search?q=${encodeURIComponent(q)}&type=all`);
+      if (!res.ok) throw new Error("Search failed. Try again.");
       const data = await res.json();
-      setTracks(data.tracks ?? []);
-      setArtists(data.artists ?? []);
-      setAlbums(data.albums ?? []);
+      const result = { tracks: data.tracks ?? [], artists: data.artists ?? [], albums: data.albums ?? [] };
+      searchCache.set(key, result);
+      setTracks(result.tracks);
+      setArtists(result.artists);
+      setAlbums(result.albums);
+    } catch (e) {
+      toast((e as Error).message ?? "Search failed");
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [query, toast]);
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSearch();

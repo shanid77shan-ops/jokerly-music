@@ -19,6 +19,7 @@ interface PlayerState {
   progressMs: number;
   durationMs: number;
   isPlayerReady: boolean;
+  sdkError: string | null;
   player: SpotifyPlayer | null;
   deviceId: string | null;
   accessToken: string | null;
@@ -33,8 +34,8 @@ interface PlayerState {
   togglePlay: () => void;
   seek: (ratio: number) => void;
   stop: () => void;
-  setRepeatMode: (mode: RepeatMode) => void;
-  toggleShuffle: () => void;
+  setRepeatMode: (mode: RepeatMode) => Promise<void>;
+  toggleShuffle: () => Promise<void>;
   getNextIndex: () => number | null;
   getPrevIndex: () => number | null;
 }
@@ -160,6 +161,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   progressMs: 0,
   durationMs: 0,
   isPlayerReady: false,
+  sdkError: null,
   player: null,
   deviceId: null,
   accessToken: null,
@@ -168,11 +170,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   endedToken: 0,
 
   initializePlayer: async (accessToken) => {
-    set({ accessToken });
+    set({ accessToken, sdkError: null });
     if (get().player) return;
 
-    const Spotify = await loadSpotifySdk();
-    if (!Spotify) return;
+    let Spotify: SpotifyPlayerCtor | null = null;
+    try {
+      Spotify = await loadSpotifySdk();
+    } catch (e) {
+      set({ sdkError: (e as Error).message ?? "Failed to load Spotify player" });
+      return;
+    }
+    if (!Spotify) {
+      set({ sdkError: "Spotify player unavailable" });
+      return;
+    }
 
     const player = new Spotify.Player({
       name: "Jokerly Web Player",
@@ -226,13 +237,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     });
 
     player.addListener("initialization_error", () => {
-      set({ isPlayerReady: false });
+      set({ isPlayerReady: false, sdkError: "Player failed to initialize. Reload the page." });
     });
     player.addListener("authentication_error", () => {
-      set({ isPlayerReady: false });
+      set({ isPlayerReady: false, sdkError: "Spotify authentication error. Try signing out and back in." });
     });
     player.addListener("account_error", () => {
-      set({ isPlayerReady: false });
+      set({ isPlayerReady: false, sdkError: "Spotify Premium is required to use the player." });
     });
 
     const connected = await player.connect();
@@ -328,12 +339,28 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     });
   },
 
-  setRepeatMode: (mode) => {
+  setRepeatMode: async (mode) => {
     set({ repeatMode: mode });
+    const { accessToken, deviceId } = get();
+    if (!accessToken || !deviceId) return;
+    const state = mode === "one" ? "track" : mode === "all" ? "context" : "off";
+    await spotifyApi(
+      `/me/player/repeat?state=${state}&device_id=${encodeURIComponent(deviceId)}`,
+      accessToken,
+      { method: "PUT" }
+    ).catch(() => {});
   },
 
-  toggleShuffle: () => {
-    set({ shuffleEnabled: !get().shuffleEnabled });
+  toggleShuffle: async () => {
+    const next = !get().shuffleEnabled;
+    set({ shuffleEnabled: next });
+    const { accessToken, deviceId } = get();
+    if (!accessToken || !deviceId) return;
+    await spotifyApi(
+      `/me/player/shuffle?state=${next}&device_id=${encodeURIComponent(deviceId)}`,
+      accessToken,
+      { method: "PUT" }
+    ).catch(() => {});
   },
 
   getNextIndex: () => {

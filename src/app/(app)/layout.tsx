@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Topbar from "@/components/layout/Topbar";
 import PlayerBar from "@/components/layout/PlayerBar";
 import FloatingNav from "@/components/layout/FloatingNav";
+import ToastContainer from "@/components/layout/ToastContainer";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -16,6 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </main>
       <PlayerBar />
       <FloatingNav />
+      <ToastContainer />
     </div>
   );
 }

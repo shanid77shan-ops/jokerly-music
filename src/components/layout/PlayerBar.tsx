@@ -23,6 +23,7 @@ export default function PlayerBar() {
     progressMs,
     durationMs,
     isPlayerReady,
+    sdkError,
     repeatMode,
     shuffleEnabled,
     endedToken,
@@ -292,7 +293,11 @@ export default function PlayerBar() {
 
         {/* Time + status */}
         <div className="flex items-center gap-2 flex-1 justify-end">
-          {!isPlayerReady ? (
+          {sdkError ? (
+            <span className="text-red-400 text-xs truncate max-w-[180px]" title={sdkError}>
+              {sdkError}
+            </span>
+          ) : !isPlayerReady ? (
             <span className="text-zinc-600 text-xs">Connecting player...</span>
           ) : noTrackUri ? (
             <span className="text-zinc-600 text-xs">Not found on Spotify</span>
