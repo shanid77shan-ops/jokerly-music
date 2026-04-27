@@ -1,0 +1,132 @@
+
+> jokerly-music@0.1.0 lint
+> eslint
+
+
+D:\ClaudeVscode\jokerly-music\src\app\(app)\pinned\PinnedClient.tsx
+  21:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\ClaudeVscode\jokerly-music\src\app\(app)\pinned\PinnedClient.tsx:21:21
+  19 |   };
+  20 |
+> 21 |   useEffect(() => { load(); }, []);
+     |                     ^^^^ Avoid calling setState() directly within an effect
+  22 |
+  23 |   const unpin = async (playlistId: string) => {
+  24 |     setUnpinning(playlistId);  react-hooks/set-state-in-effect
+
+D:\ClaudeVscode\jokerly-music\src\app\(app)\playlists\PlaylistsClient.tsx
+  35:35  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  35:50  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  39:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\ClaudeVscode\jokerly-music\src\app\(app)\playlists\PlaylistsClient.tsx:39:21
+  37 |   };
+  38 |
+> 39 |   useEffect(() => { load(); }, []);
+     |                     ^^^^ Avoid calling setState() directly within an effect
+  40 |
+  41 |   const createPlaylist = async () => {
+  42 |     if (!newName.trim()) return;  react-hooks/set-state-in-effect
+
+D:\ClaudeVscode\jokerly-music\src\app\(app)\recommendations\RecommendationsClient.tsx
+  98:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\ClaudeVscode\jokerly-music\src\app\(app)\recommendations\RecommendationsClient.tsx:98:21
+   96 |     isPlaying;
+   97 |
+>  98 |   useEffect(() => { fetchCharts(); }, []);
+      |                     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+   99 |
+  100 |   return (
+  101 |     <div className="w-full space-y-6">  react-hooks/set-state-in-effect
+
+D:\ClaudeVscode\jokerly-music\src\app\(app)\search\SearchClient.tsx
+  72:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\ClaudeVscode\jokerly-music\src\app\(app)\search\SearchClient.tsx:72:7
+  70 |     clearTimeout(suggestTimer.current);
+  71 |     if (query.trim().length < 2) {
+> 72 |       setSuggestions([]);
+     |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  73 |       setShowSuggestions(false);
+  74 |       return;
+  75 |     }  react-hooks/set-state-in-effect
+
+D:\ClaudeVscode\jokerly-music\src\app\api\lastfm\artist\route.ts
+  17:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\ClaudeVscode\jokerly-music\src\app\api\lastfm\charts\route.ts
+  11:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\ClaudeVscode\jokerly-music\src\app\api\lastfm\recommendations\route.ts
+   2:10  warning  'auth' is defined but never used          @typescript-eslint/no-unused-vars
+  19:17  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\ClaudeVscode\jokerly-music\src\app\api\lastfm\search\route.ts
+  32:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\ClaudeVscode\jokerly-music\src\app\api\spotify\recommendations\route.ts
+  18:66  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\ClaudeVscode\jokerly-music\src\components\layout\Topbar.tsx
+  62:19  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\ClaudeVscode\jokerly-music\src\components\layout\Topbar.tsx:62:19
+  60 |   const pathname = usePathname();
+  61 |
+> 62 |   useEffect(() => setMounted(true), []);
+     |                   ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  63 |
+  64 |   return (
+  65 |     <>  react-hooks/set-state-in-effect
+
+D:\ClaudeVscode\jokerly-music\src\lib\auth.ts
+  19:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\ClaudeVscode\jokerly-music\src\lib\lastfm.ts
+  20:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  37:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  47:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  59:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  66:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  71:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  76:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 26 problems (25 errors, 1 warning)
+

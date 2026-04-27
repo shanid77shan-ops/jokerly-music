@@ -5,6 +5,7 @@ import { Search, Loader2, Music, Mic2, Play } from "lucide-react";
 import LfmTrackCard from "@/components/music/LfmTrackCard";
 import LfmArtistCard from "@/components/music/LfmArtistCard";
 import LfmAlbumCard from "@/components/music/LfmAlbumCard";
+import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import { LfmTrack, LfmArtist, LfmAlbum, lfmArtistName, lfmImage } from "@/lib/lastfm";
 import ArtistDetailSheet from "@/components/music/ArtistDetailSheet";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
@@ -25,6 +26,11 @@ interface Suggestion {
   image: string | null;
 }
 
+interface ResolvedTrackPayload {
+  uri: string;
+  name: string;
+}
+
 function toPlayable(t: LfmTrack): PlayableTrack {
   return {
     name: t.name,
@@ -36,9 +42,15 @@ function toPlayable(t: LfmTrack): PlayableTrack {
 
 async function fetchPreview(name: string, artist: string) {
   const res = await fetch(
-    `/api/spotify/preview?track=${encodeURIComponent(name)}&artist=${encodeURIComponent(artist)}`
+    `/api/spotify/resolve?track=${encodeURIComponent(name)}&artist=${encodeURIComponent(artist)}`
   );
-  return res.json() as Promise<{ previewUrl: string | null; imageUrl: string | null }>;
+  return res.json() as Promise<{ uri: string | null; imageUrl: string | null; durationMs: number | null }>;
+}
+
+async function resolveTrackForPlaylist(name: string, artist: string): Promise<ResolvedTrackPayload | null> {
+  const data = await fetchPreview(name, artist);
+  if (!data.uri) return null;
+  return { uri: data.uri, name };
 }
 
 export default function SearchClient() {
@@ -58,6 +70,8 @@ export default function SearchClient() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [playingKey, setPlayingKey] = useState<string | null>(null); // tracks which suggestion is loading
+  const [resolvingAddKey, setResolvingAddKey] = useState<string | null>(null);
+  const [modalTrack, setModalTrack] = useState<ResolvedTrackPayload | null>(null);
 
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -162,10 +176,11 @@ export default function SearchClient() {
 
     try {
       const data = await fetchPreview(s.name, s.sub);
-      playable.previewUrl = data.previewUrl ?? null;
+      playable.uri = data.uri ?? null;
+      if (typeof data.durationMs === "number") playable.durationMs = data.durationMs;
       if (data.imageUrl) playable.image = data.imageUrl;
     } catch {
-      playable.previewUrl = null;
+      playable.uri = null;
     }
 
     setQueueAndPlay([playable], 0);
@@ -193,10 +208,11 @@ export default function SearchClient() {
     const playable = trackList.map(toPlayable);
     try {
       const data = await fetchPreview(track.name, lfmArtistName(track.artist));
-      playable[index].previewUrl = data.previewUrl ?? null;
+      playable[index].uri = data.uri ?? null;
+      if (typeof data.durationMs === "number") playable[index].durationMs = data.durationMs;
       if (data.imageUrl) playable[index].image = data.imageUrl;
     } catch {
-      playable[index].previewUrl = null;
+      playable[index].uri = null;
     }
     setQueueAndPlay(playable, index);
   };
@@ -205,6 +221,18 @@ export default function SearchClient() {
     currentTrack?.name === track.name &&
     currentTrack?.artist === lfmArtistName(track.artist) &&
     isPlaying;
+
+  const handleAddToPlaylist = async (track: LfmTrack) => {
+    const artist = lfmArtistName(track.artist);
+    const key = `${track.name}::${artist}`;
+    setResolvingAddKey(key);
+    try {
+      const resolved = await resolveTrackForPlaylist(track.name, artist);
+      if (resolved) setModalTrack(resolved);
+    } finally {
+      setResolvingAddKey(null);
+    }
+  };
 
   return (
     <div className="w-full space-y-6">
@@ -370,6 +398,7 @@ export default function SearchClient() {
                     rank={i + 1}
                     onGetSimilar={handleGetSimilar}
                     onPlay={(track) => handlePlay(track, tracks)}
+                    onAddToPlaylist={handleAddToPlaylist}
                     isCurrentlyPlaying={isTrackPlaying(t)}
                   />
                 ))
@@ -427,6 +456,7 @@ export default function SearchClient() {
                       rank={i + 1}
                       onGetSimilar={handleGetSimilar}
                       onPlay={(track) => handlePlay(track, similarTracks)}
+                      onAddToPlaylist={handleAddToPlaylist}
                       isCurrentlyPlaying={isTrackPlaying(t)}
                     />
                   ))}
@@ -435,6 +465,16 @@ export default function SearchClient() {
             </div>
           )}
         </>
+      )}
+
+      {resolvingAddKey && (
+        <div className="fixed bottom-24 right-4 bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs px-3 py-2 rounded-lg shadow-xl">
+          Resolving track for playlist...
+        </div>
+      )}
+
+      {modalTrack && (
+        <AddToPlaylistModal track={modalTrack} onClose={() => setModalTrack(null)} />
       )}
 
       {selectedArtist && (

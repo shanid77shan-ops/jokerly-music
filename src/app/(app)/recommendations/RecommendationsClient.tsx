@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Sparkles, RefreshCw, Music } from "lucide-react";
 import LfmTrackCard from "@/components/music/LfmTrackCard";
+import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import { LfmTrack, lfmArtistName, lfmImage } from "@/lib/lastfm";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 
@@ -22,6 +23,8 @@ export default function RecommendationsClient() {
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [similarSeed, setSimilarSeed] = useState<{ name: string; artist: string } | null>(null);
+  const [resolvingAdd, setResolvingAdd] = useState(false);
+  const [modalTrack, setModalTrack] = useState<{ name: string; uri: string } | null>(null);
 
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
 
@@ -77,13 +80,14 @@ export default function RecommendationsClient() {
 
     try {
       const res = await fetch(
-        `/api/spotify/preview?track=${encodeURIComponent(track.name)}&artist=${encodeURIComponent(lfmArtistName(track.artist))}`
+        `/api/spotify/resolve?track=${encodeURIComponent(track.name)}&artist=${encodeURIComponent(lfmArtistName(track.artist))}`
       );
       const data = await res.json();
-      playable[index].previewUrl = data.previewUrl ?? null;
+      playable[index].uri = data.uri ?? null;
+      if (typeof data.durationMs === "number") playable[index].durationMs = data.durationMs;
       if (data.imageUrl) playable[index].image = data.imageUrl;
     } catch {
-      playable[index].previewUrl = null;
+      playable[index].uri = null;
     }
 
     setQueueAndPlay(playable, index);
@@ -93,6 +97,21 @@ export default function RecommendationsClient() {
     currentTrack?.name === track.name &&
     currentTrack?.artist === lfmArtistName(track.artist) &&
     isPlaying;
+
+  const handleAddToPlaylist = async (track: LfmTrack) => {
+    const artist = lfmArtistName(track.artist);
+    setResolvingAdd(true);
+    try {
+      const res = await fetch(
+        `/api/spotify/resolve?track=${encodeURIComponent(track.name)}&artist=${encodeURIComponent(artist)}`
+      );
+      const data = await res.json();
+      if (!data.uri) return;
+      setModalTrack({ name: track.name, uri: data.uri });
+    } finally {
+      setResolvingAdd(false);
+    }
+  };
 
   useEffect(() => { fetchCharts(); }, []);
 
@@ -155,10 +174,21 @@ export default function RecommendationsClient() {
               rank={i + 1}
               onGetSimilar={fetchSimilar}
               onPlay={handlePlay}
+              onAddToPlaylist={handleAddToPlaylist}
               isCurrentlyPlaying={isTrackPlaying(track)}
             />
           ))}
         </div>
+      )}
+
+      {resolvingAdd && (
+        <div className="fixed bottom-24 right-4 bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs px-3 py-2 rounded-lg shadow-xl">
+          Resolving track for playlist...
+        </div>
+      )}
+
+      {modalTrack && (
+        <AddToPlaylistModal track={modalTrack} onClose={() => setModalTrack(null)} />
       )}
     </div>
   );

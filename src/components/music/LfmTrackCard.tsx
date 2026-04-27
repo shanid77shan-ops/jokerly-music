@@ -8,11 +8,12 @@ interface Props {
   track: LfmTrack;
   onGetSimilar?: (track: LfmTrack) => void;
   onPlay?: (track: LfmTrack) => void;
+  onAddToPlaylist?: (track: LfmTrack) => void;
   isCurrentlyPlaying?: boolean;
   rank?: number;
 }
 
-export default function LfmTrackCard({ track, onGetSimilar, onPlay, isCurrentlyPlaying, rank }: Props) {
+export default function LfmTrackCard({ track, onGetSimilar, onPlay, onAddToPlaylist, isCurrentlyPlaying, rank }: Props) {
   const image = lfmImage(track.image, "large");
   const artist = lfmArtistName(track.artist);
 
@@ -73,7 +74,7 @@ export default function LfmTrackCard({ track, onGetSimilar, onPlay, isCurrentlyP
         )}
       </div>
 
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
         {onGetSimilar && (
           <button
             onClick={() => onGetSimilar(track)}
@@ -82,6 +83,15 @@ export default function LfmTrackCard({ track, onGetSimilar, onPlay, isCurrentlyP
           >
             <Sparkles size={13} />
             Similar
+          </button>
+        )}
+        {onAddToPlaylist && (
+          <button
+            onClick={() => onAddToPlaylist(track)}
+            title="Add to playlist"
+            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-red-400 px-2 py-1.5 rounded-lg hover:bg-zinc-700 transition-colors"
+          >
+            + Playlist
           </button>
         )}
         <a

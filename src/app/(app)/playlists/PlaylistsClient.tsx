@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check } from "lucide-react";
+import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2 } from "lucide-react";
 import { SpotifyPlaylist } from "@/types";
 import Image from "next/image";
-import Link from "next/link";
 
 interface EditState {
   id: string;
   name: string;
   description: string;
+}
+
+interface PinnedRow {
+  playlist_id: string;
 }
 
 export default function PlaylistsClient() {
@@ -30,9 +33,9 @@ export default function PlaylistsClient() {
       fetch("/api/pinned"),
     ]);
     const plData = await plRes.json();
-    const pinData = await pinRes.json();
+    const pinData = (await pinRes.json()) as PinnedRow[];
     setPlaylists(plData.items ?? []);
-    setPinned(new Set((pinData as any[]).map((p: any) => p.playlist_id)));
+    setPinned(new Set(pinData.map((p) => p.playlist_id)));
     setLoading(false);
   };
 
@@ -90,6 +93,25 @@ export default function PlaylistsClient() {
       setPinned((prev) => new Set(prev).add(pl.id));
     }
     setPinning(null);
+  };
+
+  const removePlaylist = async (playlistId: string) => {
+    const ok = window.confirm("Delete this playlist from your Spotify account?");
+    if (!ok) return;
+
+    setSaving(true);
+    const res = await fetch(`/api/spotify/playlists/${playlistId}`, {
+      method: "DELETE",
+    });
+    setSaving(false);
+    if (!res.ok) return;
+
+    setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
+    setPinned((prev) => {
+      const next = new Set(prev);
+      next.delete(playlistId);
+      return next;
+    });
   };
 
   return (
@@ -206,16 +228,9 @@ export default function PlaylistsClient() {
                 </div>
               ) : (
                 <div className="flex-1 min-w-0">
-                  <Link
-                    href={pl.external_urls.spotify}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white text-sm font-medium hover:text-red-400 transition-colors truncate block"
-                  >
-                    {pl.name}
-                  </Link>
+                  <p className="text-white text-sm font-medium truncate block">{pl.name}</p>
                   <p className="text-zinc-400 text-xs">
-                    {pl.tracks?.total ?? 0} tracks · {pl.owner?.display_name ?? ""}
+                    {pl.tracks?.total ?? 0} tracks · Local playlist
                   </p>
                 </div>
               )}
@@ -245,6 +260,14 @@ export default function PlaylistsClient() {
                   ) : (
                     <Pin size={15} />
                   )}
+                </button>
+                <button
+                  onClick={() => removePlaylist(pl.id)}
+                  disabled={saving}
+                  className="p-2 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                  title="Delete"
+                >
+                  <Trash2 size={15} />
                 </button>
               </div>
             </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pin, Loader2, ExternalLink } from "lucide-react";
+import { Pin, Loader2 } from "lucide-react";
 import { PinnedPlaylist } from "@/types";
 import Image from "next/image";
 
@@ -81,15 +81,6 @@ export default function PinnedClient() {
               </div>
 
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <a
-                  href={`https://open.spotify.com/playlist/${pl.playlist_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
-                  title="Open in Spotify"
-                >
-                  <ExternalLink size={15} />
-                </a>
                 <button
                   onClick={() => unpin(pl.playlist_id)}
                   disabled={unpinning === pl.playlist_id}

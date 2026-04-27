@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { X, Check, Loader2 } from "lucide-react";
-import { SpotifyTrack, SpotifyPlaylist } from "@/types";
+import { SpotifyPlaylist } from "@/types";
+
+interface PlaylistTrackPayload {
+  name: string;
+  uri: string;
+}
 
 interface Props {
-  track: SpotifyTrack;
+  track: PlaylistTrackPayload;
   onClose: () => void;
 }
 
@@ -27,7 +32,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
     await fetch(`/api/spotify/playlists/${playlist.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uris: [track.uri] }),
+      body: JSON.stringify({ uris: [track.uri], trackName: track.name }),
     });
     setAdded((prev) => new Set(prev).add(playlist.id));
     setAdding(null);
