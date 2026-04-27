@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Spotify from "next-auth/providers/spotify";
+import { authConfig } from "./auth.config";
 
 const SPOTIFY_SCOPES = [
   "user-read-email",
@@ -45,7 +46,7 @@ async function refreshAccessToken(token: any) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: true,
+  ...authConfig,
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   providers: [
     Spotify({
