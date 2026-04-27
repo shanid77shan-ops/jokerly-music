@@ -32,12 +32,13 @@ export default function ArtistSheet({ artist, onClose }: Props) {
 
   useEffect(() => {
     fetch(`/api/spotify/artist?id=${encodeURIComponent(artist.id)}`)
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((d) => {
         setInfo(d.info ?? null);
         setTopTracks(d.topTracks ?? []);
         setRelated(d.related ?? []);
       })
+      .catch((e) => console.error("ArtistSheet fetch failed:", e))
       .finally(() => setLoading(false));
   }, [artist.id]);
 
