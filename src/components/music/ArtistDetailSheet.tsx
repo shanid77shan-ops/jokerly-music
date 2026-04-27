@@ -108,7 +108,7 @@ export default function ArtistDetailSheet({ artist, onClose }: Props) {
               {similar.length > 0 && (
                 <section>
                   <h3 className="text-white font-semibold mb-2">Similar Artists</h3>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {similar.map((a, i) => (
                       <LfmArtistCard key={`${a.name}-${i}`} artist={a} />
                     ))}

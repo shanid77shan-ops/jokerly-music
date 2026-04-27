@@ -1,23 +1,21 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import PlayerBar from "@/components/layout/PlayerBar";
+import FloatingNav from "@/components/layout/FloatingNav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session) redirect("/login");
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar />
-        <main className="flex-1 overflow-y-auto bg-gradient-to-b from-zinc-950 to-black dark:from-zinc-950 dark:to-black light:from-gray-50 light:to-white p-6">
-          {children}
-        </main>
-        <PlayerBar />
-      </div>
+    <div className="flex flex-col min-h-screen bg-black">
+      <Topbar />
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6 pb-32">
+        {children}
+      </main>
+      <PlayerBar />
+      <FloatingNav />
     </div>
   );
 }

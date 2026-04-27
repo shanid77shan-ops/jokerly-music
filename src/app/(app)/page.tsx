@@ -19,13 +19,13 @@ export default async function HomePage() {
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10">
+    <div className="space-y-10">
       <div>
         <h2 className="text-3xl font-bold text-white mb-1">Good evening, {firstName} 👋</h2>
         <p className="text-zinc-400">Here's what's trending on Last.fm right now.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
           href="/"
           className="flex items-center gap-3 p-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition-colors"
@@ -56,7 +56,7 @@ export default async function HomePage() {
       {artists.length > 0 && (
         <section>
           <h3 className="text-xl font-bold text-white mb-4">🎤 Top artists this week</h3>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {artists.map((artist, i) => (
               <LfmArtistCard key={`${artist.name}-${i}`} artist={artist} />
             ))}

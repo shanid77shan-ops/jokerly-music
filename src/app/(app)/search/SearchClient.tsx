@@ -65,7 +65,7 @@ export default function SearchClient() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <div>
         <h2 className="text-3xl font-bold text-white mb-1">Search</h2>
         <p className="text-zinc-400">Find tracks, artists & albums via Last.fm</p>
@@ -126,7 +126,7 @@ export default function SearchClient() {
           )}
 
           {tab === "artist" && (
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {artists.length === 0 ? (
                 <p className="text-zinc-500 text-sm py-8 col-span-4 text-center">No artists found.</p>
               ) : (
@@ -142,7 +142,7 @@ export default function SearchClient() {
           )}
 
           {tab === "album" && (
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {albums.length === 0 ? (
                 <p className="text-zinc-500 text-sm py-8 col-span-5 text-center">No albums found.</p>
               ) : (
