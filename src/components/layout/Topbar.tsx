@@ -6,12 +6,10 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Settings, X, User, Search, Sparkles, Pin } from "lucide-react";
+import { Sun, Moon, Settings, X, User, Search } from "lucide-react";
 
 const navLinks = [
   { href: "/search", label: "Search", icon: Search },
-  { href: "/recommendations", label: "For You", icon: Sparkles },
-  { href: "/pinned", label: "Pinned", icon: Pin },
 ];
 
 function SettingsModal({ onClose }: { onClose: () => void }) {
