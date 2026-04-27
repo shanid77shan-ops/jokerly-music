@@ -1,7 +1,7 @@
 "use client";
 
 import { LfmTrack, lfmImage, lfmArtistName } from "@/lib/lastfm";
-import { Music, ExternalLink, Sparkles, Play, Pause } from "lucide-react";
+import { Music, ExternalLink, Sparkles, Play, Pause, ListPlus } from "lucide-react";
 import Image from "next/image";
 
 interface Props {
@@ -11,10 +11,11 @@ interface Props {
   onAddToPlaylist?: (track: LfmTrack) => void;
   isCurrentlyPlaying?: boolean;
   rank?: number;
+  imageOverride?: string | null;
 }
 
-export default function LfmTrackCard({ track, onGetSimilar, onPlay, onAddToPlaylist, isCurrentlyPlaying, rank }: Props) {
-  const image = lfmImage(track.image, "large");
+export default function LfmTrackCard({ track, onGetSimilar, onPlay, onAddToPlaylist, isCurrentlyPlaying, rank, imageOverride }: Props) {
+  const image = imageOverride ?? lfmImage(track.image, "large");
   const artist = lfmArtistName(track.artist);
 
   const handleRowClick = (e: React.MouseEvent) => {
@@ -74,31 +75,31 @@ export default function LfmTrackCard({ track, onGetSimilar, onPlay, onAddToPlayl
         )}
       </div>
 
-      <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
-        {onGetSimilar && (
-          <button
-            onClick={() => onGetSimilar(track)}
-            title="Find similar tracks"
-            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-purple-400 px-2 py-1.5 rounded-lg hover:bg-zinc-700 transition-colors"
-          >
-            <Sparkles size={13} />
-            Similar
-          </button>
-        )}
+      <div className="flex items-center gap-0.5 shrink-0">
         {onAddToPlaylist && (
           <button
-            onClick={() => onAddToPlaylist(track)}
+            onClick={(e) => { e.stopPropagation(); onAddToPlaylist(track); }}
             title="Add to playlist"
-            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-red-400 px-2 py-1.5 rounded-lg hover:bg-zinc-700 transition-colors"
+            className="p-2 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-700 transition-colors"
           >
-            + Playlist
+            <ListPlus size={17} />
+          </button>
+        )}
+        {onGetSimilar && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onGetSimilar(track); }}
+            title="Find similar tracks"
+            className="p-2 rounded-lg text-zinc-400 hover:text-purple-400 hover:bg-zinc-700 transition-colors"
+          >
+            <Sparkles size={15} />
           </button>
         )}
         <a
           href={track.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
+          onClick={(e) => e.stopPropagation()}
+          className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
           title="Open on Last.fm"
         >
           <ExternalLink size={14} />
