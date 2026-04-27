@@ -3,7 +3,7 @@ import { getTopTracks, getTopArtists } from "@/lib/lastfm";
 import LfmTrackCard from "@/components/music/LfmTrackCard";
 import LfmArtistCard from "@/components/music/LfmArtistCard";
 import Link from "next/link";
-import { Sparkles, Search } from "lucide-react";
+import { Sparkles, Search, Home, ListMusic } from "lucide-react";
 
 export default async function HomePage() {
   const session = await auth();
@@ -27,18 +27,18 @@ export default async function HomePage() {
 
       <div className="grid grid-cols-2 gap-4">
         <Link
-          href="/search"
+          href="/"
           className="flex items-center gap-3 p-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition-colors"
         >
-          <Search size={24} className="text-green-400" />
-          <span className="font-semibold">Search music, artists & albums</span>
+          <Home size={24} className="text-green-400" />
+          <span className="font-semibold">Home</span>
         </Link>
         <Link
-          href="/recommendations"
+          href="/playlists"
           className="flex items-center gap-3 p-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition-colors"
         >
-          <Sparkles size={24} className="text-purple-400" />
-          <span className="font-semibold">Browse by genre or mood</span>
+          <ListMusic size={24} className="text-purple-400" />
+          <span className="font-semibold">Playlists</span>
         </Link>
       </div>
 
