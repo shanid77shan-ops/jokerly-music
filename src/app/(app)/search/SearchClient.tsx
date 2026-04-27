@@ -66,7 +66,6 @@ export default function SearchClient() {
   const [albums, setAlbums] = useState<LfmAlbum[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [imageMap, setImageMap] = useState<Record<string, string>>({});
   const [selectedArtist, setSelectedArtist] = useState<LfmArtist | null>(null);
   const [similarSeed, setSimilarSeed] = useState<LfmTrack | null>(null);
   const [similarTracks, setSimilarTracks] = useState<LfmTrack[]>([]);
@@ -106,32 +105,17 @@ export default function SearchClient() {
     setSuggestionsLoading(true);
     suggestTimer.current = setTimeout(async () => {
       try {
-        const [trackRes, artistRes, spotifyRes] = await Promise.allSettled([
+        const [trackRes, artistRes] = await Promise.all([
           fetch(`/api/lastfm/search?q=${encodeURIComponent(query)}&type=track&limit=5`),
           fetch(`/api/lastfm/search?q=${encodeURIComponent(query)}&type=artist&limit=3`),
-          fetch(`/api/spotify/search?q=${encodeURIComponent(query)}&type=track`),
         ]);
-
-        // Build a quick Spotify image lookup
-        const spotifyImgMap: Record<string, string> = {};
-        if (spotifyRes.status === "fulfilled" && spotifyRes.value.ok) {
-          const sd = await spotifyRes.value.json();
-          for (const item of (sd.tracks?.items ?? [])) {
-            const imgUrl = item.album?.images?.[1]?.url ?? item.album?.images?.[0]?.url;
-            if (imgUrl) {
-              spotifyImgMap[item.name.toLowerCase()] = imgUrl;
-            }
-          }
-        }
-
-        const trackData = trackRes.status === "fulfilled" && trackRes.value.ok ? await trackRes.value.json() : {};
-        const artistData = artistRes.status === "fulfilled" && artistRes.value.ok ? await artistRes.value.json() : {};
+        const [trackData, artistData] = await Promise.all([trackRes.json(), artistRes.json()]);
 
         const trackSugs: Suggestion[] = (trackData.tracks ?? []).map((t: LfmTrack) => ({
           type: "track",
           name: t.name,
           sub: lfmArtistName(t.artist),
-          image: spotifyImgMap[t.name.toLowerCase()] ?? lfmImage(t.image, "small"),
+          image: lfmImage(t.image, "small"),
         }));
         const artistSugs: Suggestion[] = (artistData.artists ?? []).map((a: LfmArtist) => ({
           type: "artist",
@@ -148,7 +132,7 @@ export default function SearchClient() {
       } finally {
         setSuggestionsLoading(false);
       }
-    }, 280);
+    }, 150);
     return () => clearTimeout(suggestTimer.current);
   }, [query]);
 
@@ -184,32 +168,14 @@ export default function SearchClient() {
 
     setLoading(true);
     try {
-      const [lfmRes, spotifyRes] = await Promise.allSettled([
-        fetch(`/api/lastfm/search?q=${encodeURIComponent(q)}&type=all`),
-        fetch(`/api/spotify/search?q=${encodeURIComponent(q)}&type=track`),
-      ]);
-
-      if (lfmRes.status === "rejected" || !lfmRes.value.ok) throw new Error("Search failed. Try again.");
-      const data = await lfmRes.value.json();
+      const res = await fetch(`/api/lastfm/search?q=${encodeURIComponent(q)}&type=all`);
+      if (!res.ok) throw new Error("Search failed. Try again.");
+      const data = await res.json();
       const result = { tracks: data.tracks ?? [], artists: data.artists ?? [], albums: data.albums ?? [] };
       searchCache.set(key, result);
       setTracks(result.tracks);
       setArtists(result.artists);
       setAlbums(result.albums);
-
-      // Build image map from Spotify results
-      if (spotifyRes.status === "fulfilled" && spotifyRes.value.ok) {
-        const spotifyData = await spotifyRes.value.json();
-        const map: Record<string, string> = {};
-        for (const item of (spotifyData.tracks?.items ?? [])) {
-          const imgUrl = item.album?.images?.[0]?.url;
-          if (imgUrl) {
-            const k = `${item.name.toLowerCase()}::${item.artists?.[0]?.name?.toLowerCase() ?? ""}`;
-            map[k] = imgUrl;
-          }
-        }
-        setImageMap(map);
-      }
     } catch (e) {
       toast((e as Error).message ?? "Search failed");
     } finally {
@@ -477,7 +443,6 @@ export default function SearchClient() {
                     onPlay={(track) => handlePlay(track, tracks)}
                     onAddToPlaylist={handleAddToPlaylist}
                     isCurrentlyPlaying={isTrackPlaying(t)}
-                    imageOverride={imageMap[`${t.name.toLowerCase()}::${lfmArtistName(t.artist).toLowerCase()}`]}
                   />
                 ))
               )}
@@ -536,8 +501,7 @@ export default function SearchClient() {
                       onPlay={(track) => handlePlay(track, similarTracks)}
                       onAddToPlaylist={handleAddToPlaylist}
                       isCurrentlyPlaying={isTrackPlaying(t)}
-                      imageOverride={imageMap[`${t.name.toLowerCase()}::${lfmArtistName(t.artist).toLowerCase()}`]}
-                    />
+                      />
                   ))}
                 </div>
               )}

@@ -3,6 +3,7 @@
 import { LfmTrack, lfmImage, lfmArtistName } from "@/lib/lastfm";
 import { Music, ExternalLink, Sparkles, Play, Pause, ListPlus } from "lucide-react";
 import Image from "next/image";
+import { useSpotifyImage } from "@/hooks/useSpotifyImage";
 
 interface Props {
   track: LfmTrack;
@@ -15,11 +16,11 @@ interface Props {
 }
 
 export default function LfmTrackCard({ track, onGetSimilar, onPlay, onAddToPlaylist, isCurrentlyPlaying, rank, imageOverride }: Props) {
-  const image = imageOverride ?? lfmImage(track.image, "large");
   const artist = lfmArtistName(track.artist);
+  const lfmImg = lfmImage(track.image, "large");
+  const image = useSpotifyImage(track.name, artist, imageOverride ?? lfmImg);
 
   const handleRowClick = (e: React.MouseEvent) => {
-    // Don't fire if clicking a button or link inside the row
     if ((e.target as HTMLElement).closest("button, a")) return;
     onPlay?.(track);
   };
@@ -49,16 +50,12 @@ export default function LfmTrackCard({ track, onGetSimilar, onPlay, onAddToPlayl
         )}
         {onPlay && (
           <div
-            className={`absolute inset-0 rounded-lg flex items-center justify-center transition-opacity ${
+            className={`absolute inset-0 rounded-md flex items-center justify-center transition-opacity ${
               isCurrentlyPlaying ? "opacity-100 bg-black/40" : "opacity-0 group-hover:opacity-100 bg-black/50"
             }`}
             onClick={(e) => { e.stopPropagation(); onPlay(track); }}
           >
-            {isCurrentlyPlaying ? (
-              <Pause size={16} className="text-white" />
-            ) : (
-              <Play size={16} className="text-white" />
-            )}
+            {isCurrentlyPlaying ? <Pause size={14} className="text-white" /> : <Play size={14} className="text-white" />}
           </div>
         )}
       </div>

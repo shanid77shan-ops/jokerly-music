@@ -232,23 +232,8 @@ export default function PlayerBar() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs text-zinc-500 sm:grid-cols-4">
-                  <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 px-3 py-2">
-                    <span className="block uppercase tracking-wide">Shuffle</span>
-                    <span className="mt-1 block text-sm text-white">{shuffleEnabled ? "On" : "Off"}</span>
-                  </div>
-                  <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 px-3 py-2">
-                    <span className="block uppercase tracking-wide">Repeat</span>
-                    <span className="mt-1 block text-sm text-white">{repeatMode === "off" ? "Off" : repeatMode === "all" ? "Queue" : "Track"}</span>
-                  </div>
-                  <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 px-3 py-2">
-                    <span className="block uppercase tracking-wide">Queue</span>
-                    <span className="mt-1 block text-sm text-white">{Math.max(queueIndex + 1, 1)} / {queue.length}</span>
-                  </div>
-                  <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 px-3 py-2">
-                    <span className="block uppercase tracking-wide">Auto Next</span>
-                    <span className="mt-1 block text-sm text-white">{repeatMode === "one" ? "Loop 1" : hasNext ? "Ready" : repeatMode === "all" ? "Wrap" : "Stop"}</span>
-                  </div>
+                <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
+                  <span>{Math.max(queueIndex + 1, 1)} / {queue.length} in queue</span>
                 </div>
               </div>
             </div>
