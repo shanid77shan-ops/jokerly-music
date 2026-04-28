@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, Loader2, Music, Mic2, Play, ListPlus } from "lucide-react";
 import SpotifyTrackCard from "@/components/music/SpotifyTrackCard";
 import SpotifyArtistCard from "@/components/music/SpotifyArtistCard";
@@ -46,7 +47,9 @@ function toPlayable(t: SpotifyTrack): PlayableTrack {
 }
 
 export default function SearchClient() {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const initialQ = searchParams.get("q") ?? "";
+  const [query, setQuery] = useState(initialQ);
   const [tab, setTab] = useState<Tab>("track");
   const [tracks, setTracks] = useState<SpotifyTrack[]>([]);
   const [artists, setArtists] = useState<SpotifyArtist[]>([]);
@@ -71,6 +74,12 @@ export default function SearchClient() {
 
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
   const { toast } = useToastStore();
+
+  // Auto-search if navigated with ?q=
+  useEffect(() => {
+    if (initialQ.trim()) handleSearch(initialQ);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Debounced suggestions fetch
   useEffect(() => {
