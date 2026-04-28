@@ -296,6 +296,14 @@ export default function PlayerBar() {
         {/* Controls */}
         <div className="flex items-center gap-1 shrink-0">
           <button
+            onClick={toggleShuffle}
+            className={`hidden sm:flex p-2 rounded-lg transition-colors ${shuffleEnabled ? "text-red-400" : "text-zinc-600 hover:text-zinc-300"}`}
+            title={shuffleEnabled ? "Shuffle on" : "Shuffle off"}
+          >
+            <Shuffle size={15} />
+          </button>
+
+          <button
             onClick={() => prevIndex !== null && fetchAndPlay(prevIndex)}
             disabled={!hasPrev || fetching}
             className="p-2 rounded-lg text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -320,6 +328,14 @@ export default function PlayerBar() {
             title="Next"
           >
             <SkipForward size={18} />
+          </button>
+
+          <button
+            onClick={cycleRepeatMode}
+            className={`hidden sm:flex p-2 rounded-lg transition-colors ${repeatMode !== "off" ? "text-red-400" : "text-zinc-600 hover:text-zinc-300"}`}
+            title={repeatMode === "off" ? "Repeat off" : repeatMode === "all" ? "Repeat all" : "Repeat one"}
+          >
+            <RepeatIcon size={15} />
           </button>
         </div>
 
