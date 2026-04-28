@@ -87,3 +87,8 @@ export async function getArtistTopTracks(artistId: string, accessToken: string) 
 export async function getRelatedArtists(artistId: string, accessToken: string) {
   return spotifyFetch(`${SPOTIFY_BASE}/artists/${artistId}/related-artists`, accessToken);
 }
+
+export async function getTracksByIds(ids: string[], accessToken: string) {
+  const safeIds = ids.slice(0, 50).join(",");
+  return spotifyFetch(`${SPOTIFY_BASE}/tracks?ids=${safeIds}`, accessToken);
+}

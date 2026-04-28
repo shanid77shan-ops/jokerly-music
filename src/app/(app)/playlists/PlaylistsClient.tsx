@@ -57,7 +57,37 @@ export default function PlaylistsClient() {
     try {
       const res = await fetch(`/api/spotify/playlists/${id}`);
       const data = await res.json();
-      setTracksMap((prev) => ({ ...prev, [id]: data.items ?? [] }));
+      const items: PlaylistTrack[] = data.items ?? [];
+
+      // Batch-fetch images from Spotify for tracks that don't have one stored
+      const missing = items.filter((t) => !t.track_image).map((t) => {
+        // URI format: spotify:track:TRACK_ID
+        const parts = t.track_uri.split(":");
+        return parts[parts.length - 1];
+      }).filter(Boolean);
+
+      if (missing.length > 0) {
+        try {
+          const enrichRes = await fetch(`/api/spotify/tracks?ids=${missing.join(",")}`);
+          const enrichData = await enrichRes.json();
+          const imageMap: Record<string, { image: string | null; artist: string }> = {};
+          for (const t of enrichData.tracks ?? []) {
+            imageMap[t.id] = { image: t.image, artist: t.artist };
+          }
+          for (const item of items) {
+            if (!item.track_image) {
+              const parts = item.track_uri.split(":");
+              const trackId = parts[parts.length - 1];
+              if (imageMap[trackId]) {
+                item.track_image = imageMap[trackId].image;
+                if (!item.track_artist) item.track_artist = imageMap[trackId].artist;
+              }
+            }
+          }
+        } catch { /* enrich failed, show without images */ }
+      }
+
+      setTracksMap((prev) => ({ ...prev, [id]: items }));
     } catch {
       setTracksMap((prev) => ({ ...prev, [id]: [] }));
     } finally {
@@ -253,13 +283,16 @@ export default function PlaylistsClient() {
             const isExpanded = expandedId === pl.id;
             const tracks = tracksMap[pl.id] ?? [];
 
+            // Use playlist cover, or first loaded track image as fallback
+            const coverUrl = pl.images?.[0]?.url ?? tracksMap[pl.id]?.find((t) => t.track_image)?.track_image ?? null;
+
             return (
               <div key={pl.id} className={`rounded-xl overflow-hidden border transition-colors ${isExpanded ? "border-zinc-600 bg-zinc-800/60" : "border-transparent bg-zinc-800/40 hover:bg-zinc-800"} ${isDeleting ? "opacity-50 pointer-events-none" : ""}`}>
                 {/* Playlist header row */}
                 <div className="flex items-center gap-3 p-3">
                   <button onClick={() => toggleExpand(pl)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                    {pl.images?.[0]?.url ? (
-                      <Image src={pl.images[0].url} alt={pl.name} width={44} height={44} className="rounded-lg object-cover shrink-0" />
+                    {coverUrl ? (
+                      <Image src={coverUrl} alt={pl.name} width={44} height={44} unoptimized className="rounded-lg object-cover shrink-0" />
                     ) : (
                       <div className="w-11 h-11 rounded-lg bg-zinc-700 flex items-center justify-center shrink-0">
                         <ListMusic size={18} className="text-zinc-500" />
