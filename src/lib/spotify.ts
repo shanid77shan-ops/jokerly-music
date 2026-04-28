@@ -10,7 +10,6 @@ export class SpotifyError extends Error {
 async function spotifyFetch(url: string, accessToken: string): Promise<any> {
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
-    cache: "no-store",
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
