@@ -80,7 +80,7 @@ export default function Topbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <span className="text-red-500 text-xl">🎵</span>
-            <span className="text-white font-bold text-lg tracking-tight hidden sm:block">Jokerly</span>
+            <span className="text-white font-bold text-lg tracking-tight">Jokerly</span>
           </Link>
 
           {/* Nav links — hidden on small screens */}
