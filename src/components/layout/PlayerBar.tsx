@@ -138,8 +138,9 @@ export default function PlayerBar() {
       {/* Expanded Now Playing */}
       {expanded && (
         <div className="fixed inset-0 z-50 p-4 sm:p-6 flex items-end sm:items-center justify-center"
-          style={{ background: "rgba(6,4,16,0.96)", backdropFilter: "blur(28px)" }}>
-          <div className="w-full max-w-sm">
+          style={{ background: "rgba(6,4,16,0.96)", backdropFilter: "blur(28px)" }}
+          onClick={() => usePlayerStore.setState({ isPlayerExpanded: false })}>
+          <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
             <div className="rounded-3xl border border-white/[0.08] p-5 shadow-2xl shadow-black/80"
               style={{ background: "var(--surface)" }}>
               <div className="mb-5 flex items-center justify-between">
