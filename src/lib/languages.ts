@@ -23,6 +23,7 @@ export const LANGUAGES: Language[] = [
   { id: "italian",    label: "Italian",    emoji: "🇮🇹", query: "musica italiana pop 2024",         artistQuery: "cantante italiano" },
   { id: "turkish",    label: "Turkish",    emoji: "🇹🇷", query: "türkçe pop müzik 2024",            artistQuery: "türk pop sanatçı" },
   { id: "russian",    label: "Russian",    emoji: "🇷🇺", query: "russian pop music 2024",           artistQuery: "russian pop singer" },
+  { id: "malayalam",  label: "Malayalam",  emoji: "🎵",  query: "malayalam hits mollywood 2024",     artistQuery: "malayalam singer" },
 ];
 
 export function getLanguage(id: string): Language | undefined {

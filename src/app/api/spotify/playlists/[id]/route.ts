@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("playlist_tracks")
-    .select("track_uri, track_name, added_at")
+    .select("track_uri, track_name, track_image, track_artist, added_at")
     .eq("user_id", session.spotifyId)
     .eq("playlist_id", id)
     .order("added_at", { ascending: false });
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const session = await auth();
   if (!session?.spotifyId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const { uris, trackName } = await req.json();
+  const { uris, trackName, trackImage, trackArtist } = await req.json();
   const uri = Array.isArray(uris) ? uris[0] : null;
   if (!uri) return NextResponse.json({ error: "Track uri required" }, { status: 400 });
 
@@ -53,6 +53,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         playlist_id: id,
         track_uri: uri,
         track_name: String(trackName ?? "Track"),
+        track_image: trackImage ?? null,
+        track_artist: trackArtist ?? null,
       },
       { onConflict: "playlist_id,track_uri" }
     )

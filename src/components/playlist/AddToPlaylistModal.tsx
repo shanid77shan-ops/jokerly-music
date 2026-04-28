@@ -7,6 +7,8 @@ import { SpotifyPlaylist } from "@/types";
 interface PlaylistTrackPayload {
   name: string;
   uri: string;
+  image?: string | null;
+  artist?: string | null;
 }
 
 interface Props {
@@ -32,7 +34,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
     await fetch(`/api/spotify/playlists/${playlist.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uris: [track.uri], trackName: track.name }),
+      body: JSON.stringify({ uris: [track.uri], trackName: track.name, trackImage: track.image ?? null, trackArtist: track.artist ?? null }),
     });
     setAdded((prev) => new Set(prev).add(playlist.id));
     setAdding(null);

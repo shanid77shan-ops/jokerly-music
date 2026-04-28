@@ -42,13 +42,13 @@ export default function PlayerBar() {
     usePlayerStore();
   const [fetching, setFetching] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [modalTrack, setModalTrack] = useState<{ name: string; uri: string } | null>(null);
+  const [modalTrack, setModalTrack] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [resolvingAdd, setResolvingAdd] = useState(false);
 
   const handleAddToPlaylist = useCallback(async () => {
     if (!currentTrack) return;
     if (currentTrack.uri) {
-      setModalTrack({ name: currentTrack.name, uri: currentTrack.uri });
+      setModalTrack({ name: currentTrack.name, uri: currentTrack.uri, image: currentTrack.image, artist: currentTrack.artist });
       return;
     }
     setResolvingAdd(true);
