@@ -37,7 +37,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           <div className="h-px bg-white/[0.06]" />
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#0a84ff] hover:bg-[#0a84ff]/10 transition-colors text-sm font-medium"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#f0a500] hover:bg-[#f0a500]/10 transition-colors text-sm font-medium"
           >
             <X size={15} />
             Sign out
@@ -61,16 +61,16 @@ export default function Topbar() {
   return (
     <>
       {sessionError && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#0a84ff] text-white text-sm px-4 py-2.5 flex items-center justify-between gap-3">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-[#f0a500] text-white text-sm px-4 py-2.5 flex items-center justify-between gap-3">
           <span>Your Spotify session expired. Please sign back in.</span>
           <button onClick={() => signOut({ callbackUrl: "/login" })}
-            className="shrink-0 bg-white text-[#0a84ff] font-semibold text-xs px-3 py-1.5 rounded-lg">
+            className="shrink-0 bg-white text-[#f0a500] font-semibold text-xs px-3 py-1.5 rounded-lg">
             Sign out
           </button>
         </div>
       )}
       <header className={`sticky z-30 shrink-0 ${sessionError ? "top-10" : "top-0"}`}
-        style={{ background: "rgba(8,12,24,0.92)", backdropFilter: "blur(24px)", borderBottom: "1px solid rgba(10,132,255,0.10)" }}>
+        style={{ background: "rgba(7,5,18,0.92)", backdropFilter: "blur(24px)", borderBottom: "1px solid rgba(147,51,234,0.12)" }}>
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
 
           {/* Logo */}
@@ -82,7 +82,7 @@ export default function Topbar() {
           {/* Right side */}
           <div className="flex items-center gap-2">
             <Link href="/search"
-              className={`p-2 rounded-xl transition-colors ${pathname === "/search" ? "text-[#0a84ff] bg-[#0a84ff]/10" : "text-white/40 hover:text-white hover:bg-white/[0.07]"}`}
+              className={`p-2 rounded-xl transition-colors ${pathname === "/search" ? "text-[#f0a500] bg-[#f0a500]/10" : "text-white/40 hover:text-white hover:bg-white/[0.07]"}`}
               title="Search">
               <Search size={17} />
             </Link>

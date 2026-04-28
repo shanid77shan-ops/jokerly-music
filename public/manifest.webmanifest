@@ -4,8 +4,8 @@
   "description": "Discover, search, and play your music",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#080c18",
-  "theme_color": "#080c18",
+  "background_color": "#07051a",
+  "theme_color": "#07051a",
   "orientation": "portrait",
   "icons": [
     { "src": "/icon-72.png",  "sizes": "72x72",   "type": "image/png" },

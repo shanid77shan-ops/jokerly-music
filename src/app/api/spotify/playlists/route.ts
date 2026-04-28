@@ -7,40 +7,29 @@ export async function GET() {
   if (!session?.spotifyId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = await createClient();
+
+  // Single query — embed track count to avoid a second round-trip
   const { data: playlists, error } = await supabase
     .from("playlists")
-    .select("id, name, description, image")
+    .select("id, name, description, image, playlist_tracks(count)")
     .eq("user_id", session.spotifyId)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const ids = (playlists ?? []).map((p) => p.id);
-  let totals = new Map<string, number>();
-  if (ids.length > 0) {
-    const { data: tracks } = await supabase
-      .from("playlist_tracks")
-      .select("playlist_id")
-      .in("playlist_id", ids)
-      .eq("user_id", session.spotifyId);
-
-    totals = (tracks ?? []).reduce((acc, row) => {
-      acc.set(row.playlist_id, (acc.get(row.playlist_id) ?? 0) + 1);
-      return acc;
-    }, new Map<string, number>());
-  }
 
   const items = (playlists ?? []).map((pl) => ({
     id: pl.id,
     name: pl.name,
     description: pl.description ?? "",
     images: pl.image ? [{ url: pl.image }] : [],
-    tracks: { total: totals.get(pl.id) ?? 0 },
+    tracks: { total: (pl.playlist_tracks as unknown as { count: number }[])?.[0]?.count ?? 0 },
     owner: { display_name: "You" },
     external_urls: { spotify: "" },
   }));
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ items }, {
+    headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
+  });
 }
 
 export async function POST(req: NextRequest) {

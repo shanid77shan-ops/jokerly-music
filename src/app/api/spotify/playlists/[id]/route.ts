@@ -1,6 +1,5 @@
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getTracksByIds } from "@/lib/spotify";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -18,38 +17,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const items = data ?? [];
-
-  // Enrich tracks that have no image stored — batch fetch from Spotify server-side
-  const missingIds = items
-    .filter((t) => !t.track_image)
-    .map((t) => t.track_uri.split(":").pop())
-    .filter(Boolean) as string[];
-
-  if (missingIds.length > 0 && session.accessToken) {
-    try {
-      const spotifyData = await getTracksByIds(missingIds, session.accessToken);
-      const map: Record<string, { image: string | null; artist: string }> = {};
-      for (const t of spotifyData.tracks ?? []) {
-        if (!t) continue;
-        map[t.id] = {
-          image: t.album?.images?.[0]?.url ?? null,
-          artist: t.artists?.map((a: { name: string }) => a.name).join(", ") ?? "",
-        };
-      }
-      for (const item of items) {
-        if (!item.track_image) {
-          const trackId = item.track_uri.split(":").pop();
-          if (trackId && map[trackId]) {
-            item.track_image = map[trackId].image;
-            if (!item.track_artist) item.track_artist = map[trackId].artist;
-          }
-        }
-      }
-    } catch { /* best-effort — return items without images if Spotify fails */ }
-  }
-
-  return NextResponse.json({ items });
+  return NextResponse.json({ items: data ?? [] }, {
+    headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" },
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

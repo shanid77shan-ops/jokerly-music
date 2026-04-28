@@ -14,12 +14,12 @@ export default function FloatingNav() {
 
   return (
     <div className={`fixed left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${hasPlayer ? "bottom-[88px]" : "bottom-5"}`}>
-      <div className="flex items-center gap-1.5 p-1 rounded-full border border-[#0a84ff]/[0.18] shadow-2xl shadow-black/70"
-        style={{ background: "rgba(10,16,30,0.95)", backdropFilter: "blur(24px)" }}>
+      <div className="flex items-center gap-1.5 p-1 rounded-full border border-[#f0a500]/[0.22] shadow-2xl shadow-black/70"
+        style={{ background: "rgba(10,6,24,0.95)", backdropFilter: "blur(24px)" }}>
         <Link href="/"
           className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 ${
             pathname === "/"
-              ? "bg-[#0a84ff] text-white shadow-lg shadow-[#0a84ff]/30"
+              ? "bg-[#f0a500] text-white shadow-lg shadow-[#f0a500]/30"
               : "text-white/50 hover:text-white hover:bg-white/[0.08]"
           }`}>
           <Home size={16} />
@@ -29,7 +29,7 @@ export default function FloatingNav() {
         <Link href="/playlists"
           className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 ${
             pathname === "/playlists"
-              ? "bg-[#0a84ff] text-white shadow-lg shadow-[#0a84ff]/30"
+              ? "bg-[#f0a500] text-white shadow-lg shadow-[#f0a500]/30"
               : "text-white/50 hover:text-white hover:bg-white/[0.08]"
           }`}>
           <ListMusic size={16} />

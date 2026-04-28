@@ -1,25 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  /* ── Layer system ── */
-  --background:  #080c18;   /* deepest — page base            */
-  --surface:     #0d1424;   /* layer 1 — sheets, modals       */
-  --card:        #121d30;   /* layer 2 — cards, rows          */
-  --card-raised: #192438;   /* layer 3 — hovered / elevated   */
+  /* ── Layer system — deep indigo/purple ── */
+  --background:  #07051a;   /* deepest — near-black purple    */
+  --surface:     #0f0a28;   /* layer 1 — sheets, modals       */
+  --card:        #160f35;   /* layer 2 — cards, rows          */
+  --card-raised: #1f1648;   /* layer 3 — hovered / elevated   */
 
-  /* ── Accent ── */
-  --accent:      #0a84ff;   /* electric blue                  */
-  --accent-dim:  rgba(10, 132, 255, 0.14);
-  --accent-glow: rgba(10, 132, 255, 0.22);
+  /* ── Accent — gold / amber ── */
+  --accent:      #f0a500;   /* golden wave                    */
+  --accent-dim:  rgba(240, 165, 0, 0.14);
+  --accent-glow: rgba(240, 165, 0, 0.22);
+
+  /* ── Secondary — violet ── */
+  --violet:      #9333ea;
+  --violet-dim:  rgba(147, 51, 234, 0.18);
 
   /* ── Text ── */
-  --foreground:  #ffffff;   /* pure white — primary headings  */
-  --text-secondary: rgba(255,255,255,0.55);
-  --text-muted:     rgba(255,255,255,0.28);
+  --foreground:      #ffffff;
+  --text-secondary:  rgba(255,255,255,0.60);
+  --text-muted:      rgba(255,255,255,0.30);
 
   /* ── Borders ── */
-  --border:      rgba(255,255,255,0.07);
-  --border-blue: rgba(10,132,255,0.18);
+  --border:       rgba(147, 51, 234, 0.14);
+  --border-gold:  rgba(240, 165, 0, 0.20);
 }
 
 body {
@@ -27,34 +31,36 @@ body {
   color: var(--foreground);
 }
 
-/* Ambient electric-blue glow at top */
+/* Purple nebula glow from top */
 body::before {
   content: "";
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: 55vh;
-  background: radial-gradient(ellipse 70% 45% at 50% -5%, rgba(10,132,255,0.11) 0%, transparent 70%);
+  height: 60vh;
+  background:
+    radial-gradient(ellipse 90% 50% at 20% -10%, rgba(147,51,234,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 40% at 80% -5%,  rgba(240,165,0,0.10) 0%, transparent 55%);
   pointer-events: none;
   z-index: 0;
 }
 
-/* Second subtle glow — depth */
+/* Gold shimmer from bottom */
 body::after {
   content: "";
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: 30vh;
-  background: radial-gradient(ellipse 60% 40% at 50% 110%, rgba(10,132,255,0.06) 0%, transparent 70%);
+  height: 35vh;
+  background: radial-gradient(ellipse 80% 50% at 50% 115%, rgba(147,51,234,0.12) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #1e2d45 transparent;
+  scrollbar-color: #2e1a5e transparent;
 }
 
 *::-webkit-scrollbar { width: 4px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 99px; }
-*::-webkit-scrollbar-thumb:hover { background: #2a3f5f; }
+*::-webkit-scrollbar-thumb { background: #2e1a5e; border-radius: 99px; }
+*::-webkit-scrollbar-thumb:hover { background: #4a2d8a; }

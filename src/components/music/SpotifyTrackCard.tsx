@@ -28,13 +28,13 @@ export default function SpotifyTrackCard({ track, onGetSimilar, onPlay, onAddToP
         onPlay ? "cursor-pointer" : ""
       } ${
         isCurrentlyPlaying
-          ? "bg-[#0a84ff]/10 border border-[#0a84ff]/20"
+          ? "bg-[#f0a500]/10 border border-[#f0a500]/20"
           : "hover:bg-white/[0.05] border border-transparent hover:border-white/[0.07]"
       }`}
       onClick={handleRowClick}
     >
       {rank !== undefined && (
-        <span className={`text-xs w-5 text-right shrink-0 tabular-nums font-medium ${isCurrentlyPlaying ? "text-[#0a84ff]" : "text-white/25"}`}>
+        <span className={`text-xs w-5 text-right shrink-0 tabular-nums font-medium ${isCurrentlyPlaying ? "text-[#f0a500]" : "text-white/25"}`}>
           {rank}
         </span>
       )}
@@ -60,7 +60,7 @@ export default function SpotifyTrackCard({ track, onGetSimilar, onPlay, onAddToP
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium truncate ${isCurrentlyPlaying ? "text-[#0a84ff]" : "text-white"}`}>
+        <p className={`text-sm font-medium truncate ${isCurrentlyPlaying ? "text-[#f0a500]" : "text-white"}`}>
           {track.name}
         </p>
         <p className="text-xs text-white/40 truncate">{artist}</p>
@@ -71,7 +71,7 @@ export default function SpotifyTrackCard({ track, onGetSimilar, onPlay, onAddToP
           <button
             onClick={(e) => { e.stopPropagation(); onAddToPlaylist(track); }}
             title="Add to playlist"
-            className="p-1.5 rounded-lg text-white/40 hover:text-[#0a84ff] hover:bg-white/[0.07] transition-colors"
+            className="p-1.5 rounded-lg text-white/40 hover:text-[#f0a500] hover:bg-white/[0.07] transition-colors"
           >
             <ListPlus size={15} />
           </button>
