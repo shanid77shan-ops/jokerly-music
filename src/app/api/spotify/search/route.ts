@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { searchSpotify } from "@/lib/spotify";
+import { searchSpotify, SpotifyError } from "@/lib/spotify";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (e) {
     console.error("Spotify search error:", e);
-    return NextResponse.json({ tracks: [], artists: [], albums: [], error: (e as Error).message }, { status: 502 });
+    const status = e instanceof SpotifyError ? (e.status === 401 ? 401 : e.status === 429 ? 429 : 502) : 502;
+    return NextResponse.json({ tracks: [], artists: [], albums: [], error: (e as Error).message }, { status });
   }
 }

@@ -1,12 +1,20 @@
 const SPOTIFY_BASE = "https://api.spotify.com/v1";
 
-async function spotifyFetch(url: string, accessToken: string) {
+export class SpotifyError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = "SpotifyError";
+  }
+}
+
+async function spotifyFetch(url: string, accessToken: string): Promise<any> {
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    next: { revalidate: 0 },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Spotify API ${res.status}: ${body}`);
+    throw new SpotifyError(res.status, `Spotify API ${res.status}: ${body}`);
   }
   return res.json();
 }
