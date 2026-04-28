@@ -40,6 +40,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#07051a" />
+        {/* Preload Spotify SDK so it's ready before the player component mounts */}
+        <link rel="preload" href="https://sdk.scdn.co/spotify-player.js" as="script" crossOrigin="anonymous" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
