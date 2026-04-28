@@ -9,7 +9,7 @@ import { usePlayerStore, PlayableTrack } from "@/store/player";
 
 interface EditState { id: string; name: string; description: string; }
 interface PinnedRow { playlist_id: string; }
-interface PlaylistTrack { track_uri: string; track_name: string; added_at: string; }
+interface PlaylistTrack { track_uri: string; track_name: string; track_image?: string | null; track_artist?: string | null; added_at: string; }
 
 export default function PlaylistsClient() {
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
@@ -329,10 +329,19 @@ export default function PlaylistsClient() {
                         return (
                           <div key={t.track_uri} className="flex items-center gap-2.5 px-3 py-2 hover:bg-zinc-700/50 group transition-colors">
                             <span className="text-zinc-600 text-xs w-4 text-right shrink-0">{i + 1}</span>
-                            <div className="w-8 h-8 rounded-md bg-zinc-700 flex items-center justify-center shrink-0">
-                              <Music size={12} className="text-zinc-500" />
+                            <div className="relative w-8 h-8 rounded-md shrink-0 overflow-hidden bg-zinc-700">
+                              {t.track_image ? (
+                                <Image src={t.track_image} alt={t.track_name} fill unoptimized sizes="32px" className="object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Music size={12} className="text-zinc-500" />
+                                </div>
+                              )}
                             </div>
-                            <p className="text-white text-xs font-medium truncate flex-1">{t.track_name}</p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-xs font-medium truncate">{t.track_name}</p>
+                              {t.track_artist && <p className="text-zinc-500 text-xs truncate">{t.track_artist}</p>}
+                            </div>
                             <div className="flex items-center gap-0.5 shrink-0">
                               <button
                                 onClick={() => playTrack(tracks, i)}

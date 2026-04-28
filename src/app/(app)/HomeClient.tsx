@@ -46,6 +46,64 @@ function toPlayableFromTrack(t: SpotifyTrack): PlayableTrack {
   };
 }
 
+// Skeleton shimmer components
+function SkeletonLine({ w = "w-full", h = "h-3" }: { w?: string; h?: string }) {
+  return <div className={`${w} ${h} rounded-full bg-zinc-800 animate-pulse`} />;
+}
+
+function TrackRowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-2 py-2">
+      <div className="w-5 h-3 rounded bg-zinc-800 animate-pulse shrink-0" />
+      <div className="w-9 h-9 rounded-md bg-zinc-800 animate-pulse shrink-0" />
+      <div className="flex-1 space-y-1.5">
+        <SkeletonLine w="w-2/3" />
+        <SkeletonLine w="w-1/3" h="h-2" />
+      </div>
+    </div>
+  );
+}
+
+function ArtistCircleSkeleton() {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="w-full aspect-square rounded-full bg-zinc-800 animate-pulse" />
+      <SkeletonLine w="w-3/4" h="h-2" />
+    </div>
+  );
+}
+
+function FeedSkeleton() {
+  return (
+    <div className="space-y-6">
+      {[0, 1].map((i) => (
+        <div key={i} className="space-y-4">
+          <SkeletonLine w="w-40" h="h-5" />
+          <div className="space-y-1">
+            {[0, 1, 2, 3, 4, 5].map((j) => <TrackRowSkeleton key={j} />)}
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 pt-1">
+            {[0, 1, 2, 3, 4, 5].map((j) => <ArtistCircleSkeleton key={j} />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PinnedSkeleton() {
+  return (
+    <div className="space-y-2">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 flex items-center gap-3">
+          <div className="w-11 h-11 rounded-lg bg-zinc-800 animate-pulse shrink-0" />
+          <SkeletonLine w="w-40" h="h-4" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function HomeClient() {
   const router = useRouter();
 
@@ -59,6 +117,7 @@ export default function HomeClient() {
 
   // Pinned
   const [pinned, setPinned] = useState<PinnedPlaylist[]>([]);
+  const [pinnedLoading, setPinnedLoading] = useState(true);
 
   // Search suggestions
   const [query, setQuery] = useState("");
@@ -76,22 +135,27 @@ export default function HomeClient() {
 
   const { setQueueAndPlay } = usePlayerStore();
 
-  // 1. Check language preferences
+  // Fetch prefs + pinned in parallel on mount — no blocking spinner
   useEffect(() => {
-    fetch("/api/preferences")
-      .then((r) => r.json())
-      .then((data) => { setLangs(data.languages ?? []); setPrefsChecked(true); })
-      .catch(() => { setLangs([]); setPrefsChecked(true); });
+    Promise.all([
+      fetch("/api/preferences").then((r) => r.json()).catch(() => ({ languages: [] })),
+      fetch("/api/pinned").then((r) => r.json()).catch(() => []),
+    ]).then(([prefsData, pinnedData]) => {
+      setLangs(prefsData.languages ?? []);
+      setPrefsChecked(true);
+      setPinned(Array.isArray(pinnedData) ? pinnedData : []);
+      setPinnedLoading(false);
+    });
   }, []);
 
-  // 2. Redirect to onboarding if no prefs
+  // Redirect to onboarding if no languages selected
   useEffect(() => {
     if (prefsChecked && langs !== null && langs.length === 0) {
       router.push("/onboarding");
     }
   }, [prefsChecked, langs, router]);
 
-  // 3. Fetch language feed
+  // Fetch language feed
   const fetchFeed = useCallback((langList: string[]) => {
     if (!langList.length) return;
     setFeedLoading(true);
@@ -105,14 +169,6 @@ export default function HomeClient() {
   useEffect(() => {
     if (langs && langs.length > 0) fetchFeed(langs);
   }, [langs, fetchFeed]);
-
-  // 4. Pinned playlists
-  useEffect(() => {
-    fetch("/api/pinned")
-      .then((r) => r.json())
-      .then((data) => setPinned(Array.isArray(data) ? data : []))
-      .catch(() => {});
-  }, []);
 
   // Debounced suggestions
   useEffect(() => {
@@ -138,7 +194,7 @@ export default function HomeClient() {
         setSuggestions(combined);
         setShowSuggestions(true);
       } catch { setSuggestions([]); } finally { setSuggestionsLoading(false); }
-    }, 150);
+    }, 200);
     return () => clearTimeout(suggestTimer.current);
   }, [query]);
 
@@ -170,18 +226,10 @@ export default function HomeClient() {
     setQueueAndPlay(section.tracks.map(toPlayableFromTrack), index);
   };
 
-  if (!prefsChecked) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 size={28} className="animate-spin text-zinc-600" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
 
-      {/* Search bar */}
+      {/* Search bar — always visible immediately */}
       <div className="relative">
         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none z-10" />
         <input
@@ -254,7 +302,7 @@ export default function HomeClient() {
         )}
       </div>
 
-      {/* Pinned playlists — top */}
+      {/* Pinned playlists */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-white font-semibold flex items-center gap-2">
@@ -264,7 +312,7 @@ export default function HomeClient() {
             View all
           </Link>
         </div>
-        <PinnedPlaylistSection pinned={pinned} />
+        {pinnedLoading ? <PinnedSkeleton /> : <PinnedPlaylistSection pinned={pinned} />}
       </section>
 
       {/* Language tags */}
@@ -292,12 +340,7 @@ export default function HomeClient() {
 
       {/* Language feed */}
       {feedLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="text-center">
-            <Loader2 size={28} className="animate-spin text-zinc-600 mx-auto mb-3" />
-            <p className="text-zinc-600 text-sm">Loading your music feed…</p>
-          </div>
-        </div>
+        <FeedSkeleton />
       ) : (
         feedSections.map((section) => (
           <section key={section.langId} className="space-y-4">

@@ -3,8 +3,6 @@ import { searchSpotify, SpotifyError } from "@/lib/spotify";
 import { getLanguage } from "@/lib/languages";
 import { NextRequest, NextResponse } from "next/server";
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 export async function GET(req: NextRequest) {
   let session;
   try { session = await auth(); } catch { return NextResponse.json({ error: "Auth error" }, { status: 401 }); }
@@ -18,35 +16,46 @@ export async function GET(req: NextRequest) {
 
   if (!langs.length) return NextResponse.json({ sections: [] });
 
-  const sections = [];
+  // Fetch all languages in parallel — fastest possible
+  const results = await Promise.allSettled(
+    langs.map(async (langId) => {
+      const lang = getLanguage(langId);
+      if (!lang) return null;
 
-  // Sequential fetches to avoid Spotify rate limits (429)
-  for (let i = 0; i < langs.length; i++) {
-    const langId = langs[i];
-    const lang = getLanguage(langId);
-    if (!lang) continue;
-
-    if (i > 0) await sleep(120); // small gap between languages
-
-    try {
       const [trackData, artistData] = await Promise.all([
-        searchSpotify(lang.query, "track", session.accessToken, 10),
-        searchSpotify(lang.artistQuery, "artist", session.accessToken, 6),
+        searchSpotify(lang.query, "track", session!.accessToken, 10),
+        searchSpotify(lang.artistQuery, "artist", session!.accessToken, 6),
       ]);
-      sections.push({
+
+      return {
         langId,
         label: lang.label,
         emoji: lang.emoji,
         tracks: trackData.tracks?.items ?? [],
         artists: artistData.artists?.items ?? [],
-      });
-    } catch (e) {
-      const status = e instanceof SpotifyError ? e.status : 0;
-      console.error(`language-feed failed for ${langId} (${status}):`, e);
-      // On 401/429, abort remaining
-      if (status === 401 || status === 429) break;
-    }
-  }
+      };
+    })
+  );
 
-  return NextResponse.json({ sections });
+  const sections = results
+    .filter((r): r is PromiseFulfilledResult<NonNullable<Awaited<ReturnType<typeof getLanguage>> extends null ? never : {
+      langId: string; label: string; emoji: string; tracks: unknown[]; artists: unknown[];
+    }>> => r.status === "fulfilled" && r.value !== null)
+    .map((r) => r.value);
+
+  // Log any failures for debugging without crashing
+  results.forEach((r, i) => {
+    if (r.status === "rejected") {
+      const e = r.reason;
+      const status = e instanceof SpotifyError ? e.status : 0;
+      console.error(`language-feed failed for ${langs[i]} (${status}):`, e?.message ?? e);
+    }
+  });
+
+  return NextResponse.json({ sections }, {
+    headers: {
+      // Cache in browser for 5 min, CDN for 2 min — music feed doesn't need real-time freshness
+      "Cache-Control": "private, max-age=300, stale-while-revalidate=120",
+    },
+  });
 }
