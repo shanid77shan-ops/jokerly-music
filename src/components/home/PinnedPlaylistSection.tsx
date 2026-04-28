@@ -10,6 +10,8 @@ import { useToastStore } from "@/store/toast";
 interface PlaylistTrack {
   track_uri: string;
   track_name: string;
+  track_image?: string | null;
+  track_artist?: string | null;
   added_at: string;
 }
 
@@ -137,7 +139,7 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
                     </div>
 
                     {/* Track rows */}
-                    <ul className="max-h-60 overflow-y-auto divide-y divide-zinc-800/40">
+                    <ul className="max-h-72 overflow-y-auto divide-y divide-zinc-800/40">
                       {list.map((track, i) => (
                         <li key={track.track_uri}>
                           <button
@@ -145,7 +147,8 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
                             disabled={!isPlayerReady}
                             className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-zinc-800/50 transition-colors text-left group disabled:opacity-40 disabled:cursor-not-allowed"
                           >
-                            <span className="w-5 text-center text-xs text-zinc-600 group-hover:hidden shrink-0">
+                            {/* Index / play indicator */}
+                            <span className="w-5 text-center text-xs text-zinc-600 group-hover:hidden shrink-0 tabular-nums">
                               {i + 1}
                             </span>
                             <Play
@@ -153,9 +156,30 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
                               fill="currentColor"
                               className="w-5 hidden group-hover:block text-red-400 shrink-0"
                             />
-                            <span className="flex-1 text-sm text-zinc-200 truncate">
-                              {track.track_name}
-                            </span>
+                            {/* Album art */}
+                            <div className="relative w-9 h-9 shrink-0">
+                              {track.track_image ? (
+                                <Image
+                                  src={track.track_image}
+                                  alt={track.track_name}
+                                  fill
+                                  unoptimized
+                                  sizes="36px"
+                                  className="rounded-md object-cover"
+                                />
+                              ) : (
+                                <div className="w-9 h-9 rounded-md bg-zinc-700 flex items-center justify-center">
+                                  <Music2 size={13} className="text-zinc-500" />
+                                </div>
+                              )}
+                            </div>
+                            {/* Name + artist */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-zinc-200 truncate">{track.track_name}</p>
+                              {track.track_artist && (
+                                <p className="text-xs text-zinc-500 truncate">{track.track_artist}</p>
+                              )}
+                            </div>
                           </button>
                         </li>
                       ))}

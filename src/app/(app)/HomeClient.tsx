@@ -66,7 +66,7 @@ export default function HomeClient() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [playingKey, setPlayingKey] = useState<string | null>(null);
-  const [modalTrack, setModalTrack] = useState<{ name: string; uri: string } | null>(null);
+  const [modalTrack, setModalTrack] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
 
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -250,7 +250,7 @@ export default function HomeClient() {
                           </div>
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); if (s.uri) setModalTrack({ name: s.name, uri: s.uri }); }}
+                          onClick={(e) => { e.stopPropagation(); if (s.uri) setModalTrack({ name: s.name, uri: s.uri, image: s.image, artist: s.sub }); }}
                           className="shrink-0 p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-700 transition-colors opacity-0 group-hover:opacity-100"
                           title="Add to playlist"
                         >
@@ -365,7 +365,7 @@ export default function HomeClient() {
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                         <button
-                          onClick={() => track.uri && setModalTrack({ name: track.name, uri: track.uri })}
+                          onClick={() => track.uri && setModalTrack({ name: track.name, uri: track.uri, image: trackImage(track), artist: artistNames(track) })}
                           className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-700 transition-colors"
                           title="Add to playlist"
                         >
