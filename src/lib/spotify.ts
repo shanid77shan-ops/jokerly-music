@@ -22,10 +22,10 @@ async function spotifyFetch(url: string, accessToken: string): Promise<any> {
 export async function searchSpotify(query: string, type: string, accessToken: string, limit = 20) {
   const isMulti = type === "all";
   const t = isMulti ? "track,artist,album" : type;
-  // Spotify caps limit at 50 per type; for multi-type searches keep it ≤ 20
-  const safeLimit = Math.max(1, Math.min(limit, isMulti ? 20 : 50));
-  const params = new URLSearchParams({ q: query, type: t, limit: String(safeLimit) });
-  return spotifyFetch(`${SPOTIFY_BASE}/search?${params}`, accessToken);
+  const safeLimit = Math.max(1, Math.min(limit, 50));
+  // Build URL manually — URLSearchParams encodes commas, but Spotify requires literal commas in "type"
+  const url = `${SPOTIFY_BASE}/search?q=${encodeURIComponent(query)}&type=${t}&limit=${safeLimit}`;
+  return spotifyFetch(url, accessToken);
 }
 
 export async function getRecommendations(
