@@ -28,6 +28,7 @@ export default function PlayerBar() {
     repeatMode,
     shuffleEnabled,
     endedToken,
+    isPlayerExpanded: expanded,
     initializePlayer,
     togglePlay,
     playIndex,
@@ -41,7 +42,6 @@ export default function PlayerBar() {
   } =
     usePlayerStore();
   const [fetching, setFetching] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [modalTrack, setModalTrack] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [resolvingAdd, setResolvingAdd] = useState(false);
 
@@ -144,7 +144,7 @@ export default function PlayerBar() {
               style={{ background: "var(--surface)" }}>
               <div className="mb-5 flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">Now Playing</p>
-                <button onClick={() => setExpanded(false)}
+                <button onClick={() => usePlayerStore.setState({ isPlayerExpanded: false })}
                   className="rounded-xl p-2 text-white/30 hover:bg-white/[0.07] hover:text-white transition-colors">
                   <ChevronDown size={18} />
                 </button>
@@ -231,7 +231,7 @@ export default function PlayerBar() {
 
         <div className="max-w-2xl mx-auto px-3 h-[68px] flex items-center gap-2">
           {/* Track info */}
-          <button onClick={() => setExpanded(true)} className="flex min-w-0 flex-1 items-center gap-3 text-left" title="Open player">
+          <button onClick={() => usePlayerStore.setState({ isPlayerExpanded: true })} className="flex min-w-0 flex-1 items-center gap-3 text-left" title="Open player">
             <div className="relative w-11 h-11 shrink-0">
               {currentTrack.image ? (
                 <Image src={currentTrack.image} alt={currentTrack.name} fill unoptimized className="rounded-xl object-cover" sizes="44px" />

@@ -8,6 +8,9 @@ import { usePlayerStore } from "@/store/player";
 export default function FloatingNav() {
   const pathname = usePathname();
   const hasPlayer = usePlayerStore((s) => s.currentTrack !== null);
+  const isExpanded = usePlayerStore((s) => s.isPlayerExpanded);
+
+  if (isExpanded) return null;
 
   return (
     <div className={`fixed left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${hasPlayer ? "bottom-[88px]" : "bottom-5"}`}>

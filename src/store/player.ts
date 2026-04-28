@@ -25,6 +25,7 @@ interface PlayerState {
   repeatMode: RepeatMode;
   shuffleEnabled: boolean;
   endedToken: number;
+  isPlayerExpanded: boolean;
 
   initializePlayer: (accessToken: string) => Promise<void>;
   setQueueAndPlay: (tracks: PlayableTrack[], index: number) => Promise<void>;
@@ -167,6 +168,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   repeatMode: "off",
   shuffleEnabled: false,
   endedToken: 0,
+  isPlayerExpanded: false,
 
   initializePlayer: async (accessToken) => {
     set({ accessToken, sdkError: null });
