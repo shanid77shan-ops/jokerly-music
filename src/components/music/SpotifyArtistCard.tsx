@@ -15,13 +15,14 @@ export default function SpotifyArtistCard({ artist, onSelect }: Props) {
   return (
     <div
       onClick={() => onSelect?.(artist)}
-      className={`flex flex-col items-center gap-3 p-4 rounded-2xl border border-white/[0.06] bg-white/[0.03] transition-all duration-200 group ${
-        onSelect ? "cursor-pointer hover:bg-white/[0.07] hover:border-white/[0.12] hover:scale-[1.02]" : ""
+      className={`flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all duration-200 group ${
+        onSelect ? "cursor-pointer hover:scale-[1.02]" : ""
       }`}
+      style={{ background: "var(--card)", borderColor: "var(--border)" }}
     >
       <div className="relative w-20 h-20 shrink-0">
         {image ? (
-          <Image src={image} alt={artist.name} fill unoptimized className="rounded-full object-cover ring-2 ring-white/10 group-hover:ring-[#8b5cf6]/40 transition-all" sizes="80px" />
+          <Image src={image} alt={artist.name} fill unoptimized className="rounded-full object-cover ring-2 ring-white/10 group-hover:ring-[#0a84ff]/40 transition-all" sizes="80px" />
         ) : (
           <div className="w-20 h-20 rounded-full bg-white/[0.06] flex items-center justify-center ring-2 ring-white/[0.06]">
             <Mic2 size={28} className="text-white/25" />
@@ -30,7 +31,7 @@ export default function SpotifyArtistCard({ artist, onSelect }: Props) {
       </div>
 
       <div className="text-center w-full">
-        <p className="text-white text-sm font-semibold truncate group-hover:text-[#8b5cf6] transition-colors">
+        <p className="text-white text-sm font-semibold truncate group-hover:text-[#0a84ff] transition-colors">
           {artist.name}
         </p>
         {artist.followers?.total != null && (

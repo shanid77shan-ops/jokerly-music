@@ -197,10 +197,10 @@ export default function PlaylistsClient() {
     <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <ListMusic size={22} className="text-[#8b5cf6]" /> Playlists
+          <ListMusic size={22} className="text-[#0a84ff]" /> Playlists
         </h2>
         <button onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-white font-semibold text-sm transition-colors shadow-lg shadow-[#8b5cf6]/20">
+          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#0a84ff] hover:bg-[#0060cc] text-white font-semibold text-sm transition-colors shadow-lg shadow-[#0a84ff]/20">
           <Plus size={15} /> New
         </button>
       </div>
@@ -209,14 +209,14 @@ export default function PlaylistsClient() {
         <div className="rounded-2xl p-5 space-y-3 border border-white/[0.09]" style={{ background: "var(--card)" }}>
           <h3 className="text-white font-semibold text-sm">New playlist</h3>
           <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Playlist name"
-            className="w-full border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#8b5cf6]/50 transition-all"
+            className="w-full border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a84ff]/50 transition-all"
             style={{ background: "var(--surface)" }} />
           <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Description (optional)"
-            className="w-full border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#8b5cf6]/50 transition-all"
+            className="w-full border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a84ff]/50 transition-all"
             style={{ background: "var(--surface)" }} />
           <div className="flex gap-2">
             <button onClick={createPlaylist} disabled={saving || !newName.trim()}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] disabled:opacity-40 text-white font-semibold text-sm transition-colors">
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0a84ff] hover:bg-[#0060cc] disabled:opacity-40 text-white font-semibold text-sm transition-colors">
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Create
             </button>
             <button onClick={() => { setCreating(false); setNewName(""); setNewDesc(""); }}
@@ -272,13 +272,13 @@ export default function PlaylistsClient() {
                   {edit?.id === pl.id && (
                     <div className="flex flex-1 gap-2">
                       <input autoFocus value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-                        className="flex-1 border border-white/[0.08] text-white rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#8b5cf6]/50"
+                        className="flex-1 border border-white/[0.08] text-white rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a84ff]/50"
                         style={{ background: "var(--surface)" }} />
                       <input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} placeholder="Description"
-                        className="flex-1 border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#8b5cf6]/50"
+                        className="flex-1 border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a84ff]/50"
                         style={{ background: "var(--surface)" }} />
                       <button onClick={saveEdit} disabled={saving}
-                        className="px-3 py-1.5 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-white text-sm font-medium">
+                        className="px-3 py-1.5 rounded-xl bg-[#0a84ff] hover:bg-[#0060cc] text-white text-sm font-medium">
                         {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                       </button>
                       <button onClick={() => setEdit(null)}
@@ -294,13 +294,13 @@ export default function PlaylistsClient() {
                       <Pencil size={13} />
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); togglePin(pl); }} disabled={pinning === pl.id}
-                      className={`p-1.5 rounded-xl transition-colors ${pinned.has(pl.id) ? "text-[#8b5cf6] bg-[#8b5cf6]/10" : "text-white/25 hover:text-white hover:bg-white/[0.07]"}`}
+                      className={`p-1.5 rounded-xl transition-colors ${pinned.has(pl.id) ? "text-[#0a84ff] bg-[#0a84ff]/10" : "text-white/25 hover:text-white hover:bg-white/[0.07]"}`}
                       title={pinned.has(pl.id) ? "Unpin" : "Pin"}>
                       {pinning === pl.id ? <Loader2 size={13} className="animate-spin" /> : <Pin size={13} />}
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); removePlaylist(pl.id); }} disabled={isDeleting}
-                      className="p-1.5 rounded-xl text-white/25 hover:text-[#8b5cf6] hover:bg-[#8b5cf6]/10 transition-colors disabled:opacity-40" title="Delete">
-                      {isDeleting ? <Loader2 size={13} className="animate-spin text-[#8b5cf6]" /> : <Trash2 size={13} />}
+                      className="p-1.5 rounded-xl text-white/25 hover:text-[#0a84ff] hover:bg-[#0a84ff]/10 transition-colors disabled:opacity-40" title="Delete">
+                      {isDeleting ? <Loader2 size={13} className="animate-spin text-[#0a84ff]" /> : <Trash2 size={13} />}
                     </button>
                   </div>
                 </div>
@@ -339,7 +339,7 @@ export default function PlaylistsClient() {
                                 <Play size={13} fill="currentColor" />
                               </button>
                               <button onClick={() => removeTrack(pl.id, t.track_uri)} disabled={removingTrack === rmKey}
-                                className="p-1.5 rounded-xl text-white/25 hover:text-[#8b5cf6] hover:bg-[#8b5cf6]/10 transition-colors disabled:opacity-40" title="Remove">
+                                className="p-1.5 rounded-xl text-white/25 hover:text-[#0a84ff] hover:bg-[#0a84ff]/10 transition-colors disabled:opacity-40" title="Remove">
                                 {removingTrack === rmKey ? <Loader2 size={12} className="animate-spin" /> : <Trash size={12} />}
                               </button>
                             </div>
