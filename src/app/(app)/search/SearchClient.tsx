@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, Loader2, Music, Mic2, Play, ListPlus, AlertCircle, RefreshCw, LogOut } from "lucide-react";
+import { Search, Loader2, Music, Mic2, Play, ListPlus, AlertCircle, RefreshCw, LogOut, ArrowLeft } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import SpotifyTrackCard from "@/components/music/SpotifyTrackCard";
 import SpotifyArtistCard from "@/components/music/SpotifyArtistCard";
 import SpotifyAlbumCard from "@/components/music/SpotifyAlbumCard";
@@ -74,6 +75,7 @@ export default function SearchClient() {
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestBoxRef = useRef<HTMLDivElement>(null);
 
+  const router = useRouter();
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
   const { toast } = useToastStore();
 
@@ -254,9 +256,17 @@ export default function SearchClient() {
 
   return (
     <div className="w-full space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-white mb-1">Search</h2>
-        <p className="text-zinc-400">Search and instantly play any track</p>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => router.back()}
+          className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-1">Search</h2>
+          <p className="text-zinc-400">Search and instantly play any track</p>
+        </div>
       </div>
 
       {/* Search bar */}
