@@ -128,23 +128,6 @@ export default function Topbar() {
           </div>
         </div>
 
-        {/* Mobile nav row */}
-        <div className="md:hidden flex items-center gap-1 px-4 pb-2 overflow-x-auto">
-          {navLinks.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                pathname === href
-                  ? "text-red-400 bg-red-500/10 border border-red-500/30"
-                  : "text-zinc-400 hover:text-white bg-zinc-900"
-              }`}
-            >
-              <Icon size={13} />
-              {label}
-            </Link>
-          ))}
-        </div>
       </header>
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
