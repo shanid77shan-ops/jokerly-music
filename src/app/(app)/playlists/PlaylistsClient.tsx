@@ -196,40 +196,31 @@ export default function PlaylistsClient() {
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-white flex items-center gap-2">
-            <ListMusic size={28} /> Playlists
-          </h2>
-          <p className="text-zinc-400 mt-1">Create, edit and pin your playlists</p>
-        </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-black font-semibold text-sm transition-colors"
-        >
-          <Plus size={16} /> New Playlist
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+          <ListMusic size={22} className="text-[#ff2d55]" /> Playlists
+        </h2>
+        <button onClick={() => setCreating(true)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#ff2d55] hover:bg-[#ff4466] text-white font-semibold text-sm transition-colors shadow-lg shadow-[#ff2d55]/20">
+          <Plus size={15} /> New
         </button>
       </div>
 
       {creating && (
-        <div className="bg-zinc-800 rounded-2xl p-5 space-y-3 border border-zinc-700">
-          <h3 className="text-white font-semibold">Create new playlist</h3>
-          <input
-            autoFocus value={newName} onChange={(e) => setNewName(e.target.value)}
-            placeholder="Playlist name"
-            className="w-full bg-zinc-700 text-white placeholder-zinc-400 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-          />
-          <input
-            value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
-            placeholder="Description (optional)"
-            className="w-full bg-zinc-700 text-white placeholder-zinc-400 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-          />
+        <div className="rounded-2xl p-5 space-y-3 border border-white/[0.09]" style={{ background: "var(--card)" }}>
+          <h3 className="text-white font-semibold text-sm">New playlist</h3>
+          <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Playlist name"
+            className="w-full border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#ff2d55]/50 transition-all"
+            style={{ background: "var(--surface)" }} />
+          <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Description (optional)"
+            className="w-full border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#ff2d55]/50 transition-all"
+            style={{ background: "var(--surface)" }} />
           <div className="flex gap-2">
             <button onClick={createPlaylist} disabled={saving || !newName.trim()}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-50 text-black font-semibold text-sm">
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Create
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff2d55] hover:bg-[#ff4466] disabled:opacity-40 text-white font-semibold text-sm transition-colors">
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Create
             </button>
             <button onClick={() => { setCreating(false); setNewName(""); setNewDesc(""); }}
-              className="px-4 py-2 rounded-xl bg-zinc-700 hover:bg-zinc-600 text-white text-sm">
+              className="px-4 py-2 rounded-xl border border-white/[0.08] text-white/50 hover:text-white text-sm transition-colors">
               Cancel
             </button>
           </div>
@@ -239,13 +230,13 @@ export default function PlaylistsClient() {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 bg-zinc-800/50 rounded-xl animate-pulse" />
+            <div key={i} className="h-[68px] rounded-2xl border border-white/[0.06] animate-pulse" style={{ background: "var(--card)" }} />
           ))}
         </div>
       ) : playlists.length === 0 ? (
-        <div className="text-center py-20 text-zinc-500">
-          <ListMusic size={48} className="mx-auto mb-4 opacity-30" />
-          <p>No playlists yet. Create your first one!</p>
+        <div className="text-center py-20 text-white/20">
+          <ListMusic size={40} className="mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No playlists yet. Create your first one!</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -253,113 +244,102 @@ export default function PlaylistsClient() {
             const isDeleting = deleting.has(pl.id);
             const isExpanded = expandedId === pl.id;
             const tracks = tracksMap[pl.id] ?? [];
-
-            // Use playlist cover, or first loaded track image as fallback
             const coverUrl = pl.images?.[0]?.url ?? tracksMap[pl.id]?.find((t) => t.track_image)?.track_image ?? null;
 
             return (
-              <div key={pl.id} className={`rounded-xl overflow-hidden border transition-colors ${isExpanded ? "border-zinc-600 bg-zinc-800/60" : "border-transparent bg-zinc-800/40 hover:bg-zinc-800"} ${isDeleting ? "opacity-50 pointer-events-none" : ""}`}>
-                {/* Playlist header row */}
+              <div key={pl.id} className={`rounded-2xl overflow-hidden border transition-all duration-200 ${isExpanded ? "border-white/[0.1]" : "border-white/[0.06] hover:border-white/[0.09]"} ${isDeleting ? "opacity-40 pointer-events-none" : ""}`}
+                style={{ background: "var(--card)" }}>
+                {/* Playlist header */}
                 <div className="flex items-center gap-3 p-3">
                   <button onClick={() => toggleExpand(pl)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
                     {coverUrl ? (
-                      <Image src={coverUrl} alt={pl.name} width={44} height={44} unoptimized className="rounded-lg object-cover shrink-0" />
+                      <Image src={coverUrl} alt={pl.name} width={44} height={44} unoptimized className="rounded-xl object-cover shrink-0" />
                     ) : (
-                      <div className="w-11 h-11 rounded-lg bg-zinc-700 flex items-center justify-center shrink-0">
-                        <ListMusic size={18} className="text-zinc-500" />
+                      <div className="w-11 h-11 rounded-xl bg-white/[0.06] flex items-center justify-center shrink-0">
+                        <ListMusic size={17} className="text-white/25" />
                       </div>
                     )}
 
-                    {edit?.id === pl.id ? null : (
+                    {edit?.id !== pl.id && (
                       <div className="min-w-0 flex-1">
-                        <p className="text-white text-sm font-medium truncate">{pl.name}</p>
-                        <p className="text-zinc-400 text-xs">{pl.tracks?.total ?? 0} tracks</p>
+                        <p className="text-white text-sm font-semibold truncate">{pl.name}</p>
+                        <p className="text-white/30 text-xs">{pl.tracks?.total ?? 0} tracks</p>
                       </div>
                     )}
-
-                    <ChevronDown
-                      size={16}
-                      className={`text-zinc-500 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                    />
+                    <ChevronDown size={15} className={`text-white/25 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                   </button>
 
                   {edit?.id === pl.id && (
                     <div className="flex flex-1 gap-2">
                       <input autoFocus value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-                        className="flex-1 bg-zinc-700 text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
-                      <input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })}
-                        placeholder="Description"
-                        className="flex-1 bg-zinc-700 text-white placeholder-zinc-400 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                        className="flex-1 border border-white/[0.08] text-white rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#ff2d55]/50"
+                        style={{ background: "var(--surface)" }} />
+                      <input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} placeholder="Description"
+                        className="flex-1 border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#ff2d55]/50"
+                        style={{ background: "var(--surface)" }} />
                       <button onClick={saveEdit} disabled={saving}
-                        className="px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-400 text-black text-sm font-medium">
-                        {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                        className="px-3 py-1.5 rounded-xl bg-[#ff2d55] hover:bg-[#ff4466] text-white text-sm font-medium">
+                        {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                       </button>
                       <button onClick={() => setEdit(null)}
-                        className="px-3 py-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-white text-sm">
-                        <X size={14} />
+                        className="px-3 py-1.5 rounded-xl border border-white/[0.08] text-white/50 hover:text-white text-sm">
+                        <X size={13} />
                       </button>
                     </div>
                   )}
 
                   <div className="flex items-center gap-0.5 shrink-0">
                     <button onClick={(e) => { e.stopPropagation(); setEdit({ id: pl.id, name: pl.name, description: pl.description ?? "" }); }}
-                      className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-700 transition-colors" title="Edit">
-                      <Pencil size={14} />
+                      className="p-1.5 rounded-xl text-white/25 hover:text-white hover:bg-white/[0.07] transition-colors" title="Edit">
+                      <Pencil size={13} />
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); togglePin(pl); }} disabled={pinning === pl.id}
-                      className={`p-1.5 rounded-lg transition-colors ${pinned.has(pl.id) ? "text-red-400 bg-zinc-700" : "text-zinc-500 hover:text-white hover:bg-zinc-700"}`}
+                      className={`p-1.5 rounded-xl transition-colors ${pinned.has(pl.id) ? "text-[#ff2d55] bg-[#ff2d55]/10" : "text-white/25 hover:text-white hover:bg-white/[0.07]"}`}
                       title={pinned.has(pl.id) ? "Unpin" : "Pin"}>
-                      {pinning === pl.id ? <Loader2 size={14} className="animate-spin" /> : <Pin size={14} />}
+                      {pinning === pl.id ? <Loader2 size={13} className="animate-spin" /> : <Pin size={13} />}
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); removePlaylist(pl.id); }} disabled={isDeleting}
-                      className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-zinc-700 transition-colors disabled:opacity-50" title="Delete">
-                      {isDeleting ? <Loader2 size={14} className="animate-spin text-red-400" /> : <Trash2 size={14} />}
+                      className="p-1.5 rounded-xl text-white/25 hover:text-[#ff2d55] hover:bg-[#ff2d55]/10 transition-colors disabled:opacity-40" title="Delete">
+                      {isDeleting ? <Loader2 size={13} className="animate-spin text-[#ff2d55]" /> : <Trash2 size={13} />}
                     </button>
                   </div>
                 </div>
 
-                {/* Tracks dropdown */}
+                {/* Track list */}
                 {isExpanded && (
-                  <div className="border-t border-zinc-700/60 pb-2">
+                  <div className="border-t border-white/[0.06]">
                     {loadingTracks === pl.id ? (
                       <div className="flex justify-center py-6">
-                        <Loader2 size={20} className="animate-spin text-zinc-500" />
+                        <Loader2 size={18} className="animate-spin text-white/20" />
                       </div>
                     ) : tracks.length === 0 ? (
-                      <p className="text-zinc-500 text-sm text-center py-6">No tracks in this playlist yet.</p>
+                      <p className="text-white/25 text-sm text-center py-6">No tracks yet.</p>
                     ) : (
                       tracks.map((t, i) => {
                         const rmKey = `${pl.id}::${t.track_uri}`;
                         return (
-                          <div key={t.track_uri} className="flex items-center gap-2.5 px-3 py-2 hover:bg-zinc-700/50 group transition-colors">
-                            <span className="text-zinc-600 text-xs w-4 text-right shrink-0">{i + 1}</span>
-                            <div className="relative w-8 h-8 rounded-md shrink-0 overflow-hidden bg-zinc-700">
+                          <div key={t.track_uri} className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/[0.04] group transition-colors border-b border-white/[0.03] last:border-0">
+                            <span className="text-white/20 text-xs w-4 text-right shrink-0 tabular-nums">{i + 1}</span>
+                            <div className="relative w-9 h-9 rounded-xl shrink-0 overflow-hidden bg-white/[0.06]">
                               {t.track_image ? (
-                                <Image src={t.track_image} alt={t.track_name} fill unoptimized sizes="32px" className="object-cover" />
+                                <Image src={t.track_image} alt={t.track_name} fill unoptimized sizes="36px" className="object-cover" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <Music size={12} className="text-zinc-500" />
+                                  <Music size={12} className="text-white/20" />
                                 </div>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-white text-xs font-medium truncate">{t.track_name}</p>
-                              {t.track_artist && <p className="text-zinc-500 text-xs truncate">{t.track_artist}</p>}
+                              <p className="text-white text-sm font-medium truncate">{t.track_name}</p>
+                              {t.track_artist && <p className="text-white/30 text-xs truncate">{t.track_artist}</p>}
                             </div>
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <button
-                                onClick={() => playTrack(tracks, i)}
-                                className="p-1.5 rounded-md text-zinc-500 hover:text-white hover:bg-zinc-600 transition-colors"
-                                title="Play"
-                              >
-                                <Play size={12} />
+                            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => playTrack(tracks, i)}
+                                className="p-1.5 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.07] transition-colors" title="Play">
+                                <Play size={13} fill="currentColor" />
                               </button>
-                              <button
-                                onClick={() => removeTrack(pl.id, t.track_uri)}
-                                disabled={removingTrack === rmKey}
-                                className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-600 transition-colors disabled:opacity-40"
-                                title="Remove"
-                              >
+                              <button onClick={() => removeTrack(pl.id, t.track_uri)} disabled={removingTrack === rmKey}
+                                className="p-1.5 rounded-xl text-white/25 hover:text-[#ff2d55] hover:bg-[#ff2d55]/10 transition-colors disabled:opacity-40" title="Remove">
                                 {removingTrack === rmKey ? <Loader2 size={12} className="animate-spin" /> : <Trash size={12} />}
                               </button>
                             </div>

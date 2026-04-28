@@ -24,52 +24,54 @@ export default function SpotifyTrackCard({ track, onGetSimilar, onPlay, onAddToP
 
   return (
     <div
-      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg group transition-colors ${
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl group transition-all duration-200 ${
         onPlay ? "cursor-pointer" : ""
       } ${
-        isCurrentlyPlaying ? "bg-red-500/10 border border-red-500/20" : "hover:bg-zinc-800/60"
+        isCurrentlyPlaying
+          ? "bg-[#ff2d55]/10 border border-[#ff2d55]/20"
+          : "hover:bg-white/[0.05] border border-transparent hover:border-white/[0.07]"
       }`}
       onClick={handleRowClick}
     >
       {rank !== undefined && (
-        <span className={`text-xs w-4 text-right shrink-0 ${isCurrentlyPlaying ? "text-red-400" : "text-zinc-600"}`}>
+        <span className={`text-xs w-5 text-right shrink-0 tabular-nums font-medium ${isCurrentlyPlaying ? "text-[#ff2d55]" : "text-white/25"}`}>
           {rank}
         </span>
       )}
 
-      <div className="relative shrink-0 w-9 h-9">
+      <div className="relative shrink-0 w-10 h-10">
         {image ? (
-          <Image src={image} alt={track.name} fill unoptimized className="rounded-md object-cover" sizes="36px" />
+          <Image src={image} alt={track.name} fill unoptimized className="rounded-xl object-cover" sizes="40px" />
         ) : (
-          <div className="w-9 h-9 rounded-md bg-zinc-800 flex items-center justify-center">
-            <Music size={14} className="text-zinc-600" />
+          <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center">
+            <Music size={15} className="text-white/30" />
           </div>
         )}
         {onPlay && (
           <div
-            className={`absolute inset-0 rounded-md flex items-center justify-center transition-opacity ${
+            className={`absolute inset-0 rounded-xl flex items-center justify-center transition-all duration-150 ${
               isCurrentlyPlaying ? "opacity-100 bg-black/40" : "opacity-0 group-hover:opacity-100 bg-black/50"
             }`}
             onClick={(e) => { e.stopPropagation(); onPlay(track); }}
           >
-            {isCurrentlyPlaying ? <Pause size={14} className="text-white" /> : <Play size={14} className="text-white" />}
+            {isCurrentlyPlaying ? <Pause size={14} className="text-white" fill="white" /> : <Play size={14} className="text-white" fill="white" />}
           </div>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-xs font-medium truncate ${isCurrentlyPlaying ? "text-red-400" : "text-white"}`}>
+        <p className={`text-sm font-medium truncate ${isCurrentlyPlaying ? "text-[#ff2d55]" : "text-white"}`}>
           {track.name}
         </p>
-        <p className="text-[11px] text-zinc-400 truncate">{artist}</p>
+        <p className="text-xs text-white/40 truncate">{artist}</p>
       </div>
 
-      <div className="flex items-center gap-0.5 shrink-0">
+      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         {onAddToPlaylist && (
           <button
             onClick={(e) => { e.stopPropagation(); onAddToPlaylist(track); }}
             title="Add to playlist"
-            className="p-1.5 rounded-md text-zinc-400 hover:text-red-400 hover:bg-zinc-700 transition-colors"
+            className="p-1.5 rounded-lg text-white/40 hover:text-[#ff2d55] hover:bg-white/[0.07] transition-colors"
           >
             <ListPlus size={15} />
           </button>
@@ -78,7 +80,7 @@ export default function SpotifyTrackCard({ track, onGetSimilar, onPlay, onAddToP
           <button
             onClick={(e) => { e.stopPropagation(); onGetSimilar(track); }}
             title="Find similar tracks"
-            className="p-1.5 rounded-md text-zinc-400 hover:text-purple-400 hover:bg-zinc-700 transition-colors"
+            className="p-1.5 rounded-lg text-white/40 hover:text-violet-400 hover:bg-white/[0.07] transition-colors"
           >
             <Sparkles size={13} />
           </button>
@@ -88,7 +90,7 @@ export default function SpotifyTrackCard({ track, onGetSimilar, onPlay, onAddToP
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
+          className="p-1.5 rounded-lg text-white/25 hover:text-white/70 hover:bg-white/[0.07] transition-colors"
           title="Open on Spotify"
         >
           <ExternalLink size={12} />

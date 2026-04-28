@@ -10,34 +10,29 @@ export default function FloatingNav() {
   const hasPlayer = usePlayerStore((s) => s.currentTrack !== null);
 
   return (
-    <div
-      className={`fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 transition-all duration-300 ${
-        hasPlayer ? "bottom-[84px]" : "bottom-6"
-      }`}
-    >
-      <Link
-        href="/"
-        className={`flex items-center gap-2 px-5 py-3 rounded-full font-semibold text-sm shadow-2xl transition-all duration-200 ${
-          pathname === "/"
-            ? "bg-red-500 text-white shadow-red-500/40 scale-105"
-            : "bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-white border border-zinc-700 shadow-black/60"
-        }`}
-      >
-        <Home size={18} />
-        <span>Home</span>
-      </Link>
+    <div className={`fixed left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${hasPlayer ? "bottom-[88px]" : "bottom-5"}`}>
+      <div className="flex items-center gap-1.5 p-1 rounded-full border border-white/[0.1] shadow-2xl shadow-black/70"
+        style={{ background: "rgba(15,15,26,0.92)", backdropFilter: "blur(20px)" }}>
+        <Link href="/"
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 ${
+            pathname === "/"
+              ? "bg-[#ff2d55] text-white shadow-lg shadow-[#ff2d55]/30"
+              : "text-white/50 hover:text-white hover:bg-white/[0.08]"
+          }`}>
+          <Home size={16} />
+          <span>Home</span>
+        </Link>
 
-      <Link
-        href="/playlists"
-        className={`flex items-center gap-2 px-5 py-3 rounded-full font-semibold text-sm shadow-2xl transition-all duration-200 ${
-          pathname === "/playlists"
-            ? "bg-red-500 text-white shadow-red-500/40 scale-105"
-            : "bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-white border border-zinc-700 shadow-black/60"
-        }`}
-      >
-        <ListMusic size={18} />
-        <span>Playlists</span>
-      </Link>
+        <Link href="/playlists"
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 ${
+            pathname === "/playlists"
+              ? "bg-[#ff2d55] text-white shadow-lg shadow-[#ff2d55]/30"
+              : "text-white/50 hover:text-white hover:bg-white/[0.08]"
+          }`}>
+          <ListMusic size={16} />
+          <span>Playlists</span>
+        </Link>
+      </div>
     </div>
   );
 }
