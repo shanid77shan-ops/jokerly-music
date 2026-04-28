@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2, ChevronDown, Music, Play, Trash } from "lucide-react";
+import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2, ChevronDown, Music, Play, Trash, PlayCircle } from "lucide-react";
 import { SpotifyPlaylist } from "@/types";
 import Image from "next/image";
 import { useToastStore } from "@/store/toast";
@@ -194,158 +194,253 @@ export default function PlaylistsClient() {
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-5">
+
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <ListMusic size={22} className="text-[#0a84ff]" /> Playlists
-        </h2>
-        <button onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#0a84ff] hover:bg-[#0060cc] text-white font-semibold text-sm transition-colors shadow-lg shadow-[#0a84ff]/20">
+        <div>
+          <h2 className="text-xl font-bold text-white tracking-tight">Your Playlists</h2>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+            {playlists.length > 0 ? `${playlists.length} playlist${playlists.length !== 1 ? "s" : ""}` : ""}
+          </p>
+        </div>
+        <button
+          onClick={() => setCreating(true)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white font-semibold text-sm transition-all active:scale-95 shadow-lg"
+          style={{ background: "#0a84ff", boxShadow: "0 4px 16px rgba(10,132,255,0.30)" }}
+        >
           <Plus size={15} /> New
         </button>
       </div>
 
+      {/* Create form */}
       {creating && (
-        <div className="rounded-2xl p-5 space-y-3 border border-white/[0.09]" style={{ background: "var(--card)" }}>
+        <div className="rounded-2xl p-5 space-y-3 border" style={{ background: "var(--surface)", borderColor: "rgba(10,132,255,0.20)" }}>
           <h3 className="text-white font-semibold text-sm">New playlist</h3>
-          <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Playlist name"
-            className="w-full border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a84ff]/50 transition-all"
-            style={{ background: "var(--surface)" }} />
-          <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Description (optional)"
-            className="w-full border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a84ff]/50 transition-all"
-            style={{ background: "var(--surface)" }} />
+          <input
+            autoFocus value={newName} onChange={(e) => setNewName(e.target.value)}
+            placeholder="Playlist name"
+            className="w-full border text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#0a84ff]/60 transition-all"
+            style={{ background: "var(--card)", borderColor: "rgba(255,255,255,0.08)" }}
+          />
+          <input
+            value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
+            placeholder="Description (optional)"
+            className="w-full border text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#0a84ff]/60 transition-all"
+            style={{ background: "var(--card)", borderColor: "rgba(255,255,255,0.08)" }}
+          />
           <div className="flex gap-2">
-            <button onClick={createPlaylist} disabled={saving || !newName.trim()}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0a84ff] hover:bg-[#0060cc] disabled:opacity-40 text-white font-semibold text-sm transition-colors">
+            <button
+              onClick={createPlaylist} disabled={saving || !newName.trim()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0a84ff] hover:bg-[#0060cc] disabled:opacity-40 text-white font-semibold text-sm transition-colors"
+            >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Create
             </button>
-            <button onClick={() => { setCreating(false); setNewName(""); setNewDesc(""); }}
-              className="px-4 py-2 rounded-xl border border-white/[0.08] text-white/50 hover:text-white text-sm transition-colors">
+            <button
+              onClick={() => { setCreating(false); setNewName(""); setNewDesc(""); }}
+              className="px-4 py-2 rounded-xl text-sm transition-colors"
+              style={{ border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)" }}
+            >
               Cancel
             </button>
           </div>
         </div>
       )}
 
+      {/* Skeleton */}
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-[68px] rounded-2xl border border-white/[0.06] animate-pulse" style={{ background: "var(--card)" }} />
+            <div key={i} className="h-[72px] rounded-2xl animate-pulse border border-white/[0.05]" style={{ background: "var(--card)" }} />
           ))}
         </div>
       ) : playlists.length === 0 ? (
-        <div className="text-center py-20 text-white/20">
-          <ListMusic size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No playlists yet. Create your first one!</p>
+        <div className="text-center py-24" style={{ color: "var(--text-muted)" }}>
+          <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "var(--card)" }}>
+            <ListMusic size={28} className="opacity-30" />
+          </div>
+          <p className="text-sm font-medium">No playlists yet</p>
+          <p className="text-xs mt-1 opacity-60">Create your first one above</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {playlists.map((pl) => {
             const isDeleting = deleting.has(pl.id);
             const isExpanded = expandedId === pl.id;
+            const isPinned = pinned.has(pl.id);
             const tracks = tracksMap[pl.id] ?? [];
             const coverUrl = pl.images?.[0]?.url ?? tracksMap[pl.id]?.find((t) => t.track_image)?.track_image ?? null;
 
             return (
-              <div key={pl.id} className={`rounded-2xl overflow-hidden border transition-all duration-200 ${isExpanded ? "border-white/[0.1]" : "border-white/[0.06] hover:border-white/[0.09]"} ${isDeleting ? "opacity-40 pointer-events-none" : ""}`}
-                style={{ background: "var(--card)" }}>
-                {/* Playlist header */}
-                <div className="flex items-center gap-3 p-3">
-                  <button onClick={() => toggleExpand(pl)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+              <div
+                key={pl.id}
+                className={`rounded-2xl overflow-hidden border transition-all duration-200 ${isDeleting ? "opacity-40 pointer-events-none" : ""}`}
+                style={{
+                  background: "var(--card)",
+                  borderColor: isExpanded ? "rgba(10,132,255,0.22)" : "rgba(255,255,255,0.06)",
+                }}
+              >
+                {/* ── Playlist header row ── */}
+                <div className="flex items-center gap-3 px-3 py-3 group">
+
+                  {/* Cover art */}
+                  <div className="relative shrink-0 w-12 h-12">
                     {coverUrl ? (
-                      <Image src={coverUrl} alt={pl.name} width={44} height={44} unoptimized className="rounded-xl object-cover shrink-0" />
+                      <Image src={coverUrl} alt={pl.name} fill unoptimized className="rounded-xl object-cover" sizes="48px" />
                     ) : (
-                      <div className="w-11 h-11 rounded-xl bg-white/[0.06] flex items-center justify-center shrink-0">
-                        <ListMusic size={17} className="text-white/25" />
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "var(--surface)" }}>
+                        <ListMusic size={18} style={{ color: "var(--text-muted)" }} />
                       </div>
                     )}
-
-                    {edit?.id !== pl.id && (
-                      <div className="min-w-0 flex-1">
-                        <p className="text-white text-sm font-semibold truncate">{pl.name}</p>
-                        <p className="text-white/30 text-xs">{pl.tracks?.total ?? 0} tracks</p>
-                      </div>
+                    {isPinned && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#0a84ff] border-2 border-[var(--card)]" />
                     )}
-                    <ChevronDown size={15} className={`text-white/25 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
-                  </button>
+                  </div>
 
-                  {edit?.id === pl.id && (
-                    <div className="flex flex-1 gap-2">
-                      <input autoFocus value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-                        className="flex-1 border border-white/[0.08] text-white rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a84ff]/50"
-                        style={{ background: "var(--surface)" }} />
-                      <input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} placeholder="Description"
-                        className="flex-1 border border-white/[0.08] text-white placeholder-white/25 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a84ff]/50"
-                        style={{ background: "var(--surface)" }} />
+                  {/* Info / edit inline */}
+                  {edit?.id === pl.id ? (
+                    <div className="flex flex-1 gap-2 min-w-0">
+                      <input
+                        autoFocus value={edit.name}
+                        onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                        className="flex-1 min-w-0 border text-white rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-[#0a84ff]/60 transition-all"
+                        style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.08)" }}
+                      />
                       <button onClick={saveEdit} disabled={saving}
-                        className="px-3 py-1.5 rounded-xl bg-[#0a84ff] hover:bg-[#0060cc] text-white text-sm font-medium">
+                        className="shrink-0 px-3 py-1.5 rounded-xl bg-[#0a84ff] hover:bg-[#0060cc] text-white text-sm font-medium transition-colors">
                         {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                       </button>
                       <button onClick={() => setEdit(null)}
-                        className="px-3 py-1.5 rounded-xl border border-white/[0.08] text-white/50 hover:text-white text-sm">
+                        className="shrink-0 px-3 py-1.5 rounded-xl border text-sm transition-colors"
+                        style={{ borderColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)" }}>
                         <X size={13} />
                       </button>
                     </div>
+                  ) : (
+                    <button
+                      onClick={() => toggleExpand(pl)}
+                      className="flex-1 min-w-0 text-left"
+                    >
+                      <p className="text-white text-sm font-semibold truncate leading-tight">{pl.name}</p>
+                      <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
+                        {pl.tracks?.total ?? 0} tracks{isPinned ? " · Pinned" : ""}
+                      </p>
+                    </button>
                   )}
 
+                  {/* Action icons */}
                   <div className="flex items-center gap-0.5 shrink-0">
-                    <button onClick={(e) => { e.stopPropagation(); setEdit({ id: pl.id, name: pl.name, description: pl.description ?? "" }); }}
-                      className="p-1.5 rounded-xl text-white/25 hover:text-white hover:bg-white/[0.07] transition-colors" title="Edit">
+                    {/* Play all — only when expanded and tracks loaded */}
+                    {isExpanded && tracks.length > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); playTrack(tracks, 0); }}
+                        title="Play all"
+                        className="p-1.5 rounded-xl transition-colors"
+                        style={{ color: "#0a84ff" }}
+                      >
+                        <PlayCircle size={17} />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEdit({ id: pl.id, name: pl.name, description: pl.description ?? "" }); }}
+                      title="Edit"
+                      className="p-1.5 rounded-xl transition-colors hover:bg-white/[0.07]"
+                      style={{ color: "rgba(255,255,255,0.28)" }}
+                    >
                       <Pencil size={13} />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); togglePin(pl); }} disabled={pinning === pl.id}
-                      className={`p-1.5 rounded-xl transition-colors ${pinned.has(pl.id) ? "text-[#0a84ff] bg-[#0a84ff]/10" : "text-white/25 hover:text-white hover:bg-white/[0.07]"}`}
-                      title={pinned.has(pl.id) ? "Unpin" : "Pin"}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); togglePin(pl); }}
+                      disabled={pinning === pl.id}
+                      title={isPinned ? "Unpin" : "Pin"}
+                      className="p-1.5 rounded-xl transition-colors"
+                      style={{
+                        color: isPinned ? "#0a84ff" : "rgba(255,255,255,0.28)",
+                        background: isPinned ? "rgba(10,132,255,0.10)" : "transparent",
+                      }}
+                    >
                       {pinning === pl.id ? <Loader2 size={13} className="animate-spin" /> : <Pin size={13} />}
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); removePlaylist(pl.id); }} disabled={isDeleting}
-                      className="p-1.5 rounded-xl text-white/25 hover:text-[#0a84ff] hover:bg-[#0a84ff]/10 transition-colors disabled:opacity-40" title="Delete">
-                      {isDeleting ? <Loader2 size={13} className="animate-spin text-[#0a84ff]" /> : <Trash2 size={13} />}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removePlaylist(pl.id); }}
+                      disabled={isDeleting}
+                      title="Delete"
+                      className="p-1.5 rounded-xl transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
+                      style={{ color: "rgba(255,255,255,0.22)" }}
+                    >
+                      {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                    </button>
+                    <button
+                      onClick={() => toggleExpand(pl)}
+                      className="p-1.5 rounded-xl transition-colors ml-0.5"
+                      style={{ color: "rgba(255,255,255,0.25)" }}
+                    >
+                      <ChevronDown size={15} className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                     </button>
                   </div>
                 </div>
 
-                {/* Track list */}
+                {/* ── Track list ── */}
                 {isExpanded && (
-                  <div className="border-t border-white/[0.06]">
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", background: "var(--surface)" }}>
                     {loadingTracks === pl.id ? (
-                      <div className="flex justify-center py-6">
-                        <Loader2 size={18} className="animate-spin text-white/20" />
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 size={18} className="animate-spin" style={{ color: "rgba(255,255,255,0.20)" }} />
                       </div>
                     ) : tracks.length === 0 ? (
-                      <p className="text-white/25 text-sm text-center py-6">No tracks yet.</p>
+                      <p className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>No tracks yet.</p>
                     ) : (
-                      tracks.map((t, i) => {
-                        const rmKey = `${pl.id}::${t.track_uri}`;
-                        return (
-                          <div key={t.track_uri} className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/[0.04] group transition-colors border-b border-white/[0.03] last:border-0">
-                            <span className="text-white/20 text-xs w-4 text-right shrink-0 tabular-nums">{i + 1}</span>
-                            <div className="relative w-9 h-9 rounded-xl shrink-0 overflow-hidden bg-white/[0.06]">
-                              {t.track_image ? (
-                                <Image src={t.track_image} alt={t.track_name} fill unoptimized sizes="36px" className="object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Music size={12} className="text-white/20" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-white text-sm font-medium truncate">{t.track_name}</p>
-                              {t.track_artist && <p className="text-white/30 text-xs truncate">{t.track_artist}</p>}
-                            </div>
-                            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => playTrack(tracks, i)}
-                                className="p-1.5 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.07] transition-colors" title="Play">
-                                <Play size={13} fill="currentColor" />
-                              </button>
-                              <button onClick={() => removeTrack(pl.id, t.track_uri)} disabled={removingTrack === rmKey}
-                                className="p-1.5 rounded-xl text-white/25 hover:text-[#0a84ff] hover:bg-[#0a84ff]/10 transition-colors disabled:opacity-40" title="Remove">
+                      <div>
+                        {tracks.map((t, i) => {
+                          const rmKey = `${pl.id}::${t.track_uri}`;
+                          return (
+                            <div
+                              key={t.track_uri}
+                              className="flex items-center gap-2.5 px-3 py-2.5 group transition-colors cursor-pointer"
+                              style={{ borderBottom: i < tracks.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none" }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--card)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                              onClick={() => playTrack(tracks, i)}
+                            >
+                              {/* Number / play on hover */}
+                              <div className="w-5 shrink-0 flex items-center justify-center">
+                                <span className="text-xs tabular-nums group-hover:hidden" style={{ color: "var(--text-muted)" }}>{i + 1}</span>
+                                <Play size={12} fill="currentColor" className="hidden group-hover:block text-[#0a84ff]" />
+                              </div>
+
+                              {/* Album art */}
+                              <div className="relative w-9 h-9 rounded-lg shrink-0 overflow-hidden" style={{ background: "var(--card)" }}>
+                                {t.track_image ? (
+                                  <Image src={t.track_image} alt={t.track_name} fill unoptimized sizes="36px" className="object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Music size={12} style={{ color: "var(--text-muted)" }} />
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Track info */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white text-sm font-medium truncate leading-tight">{t.track_name}</p>
+                                {t.track_artist && (
+                                  <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-muted)" }}>{t.track_artist}</p>
+                                )}
+                              </div>
+
+                              {/* Remove */}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); removeTrack(pl.id, t.track_uri); }}
+                                disabled={removingTrack === rmKey}
+                                title="Remove"
+                                className="shrink-0 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
+                                style={{ color: "rgba(255,255,255,0.25)" }}
+                              >
                                 {removingTrack === rmKey ? <Loader2 size={12} className="animate-spin" /> : <Trash size={12} />}
                               </button>
                             </div>
-                          </div>
-                        );
-                      })
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 )}
