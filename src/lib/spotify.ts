@@ -10,7 +10,7 @@ export class SpotifyError extends Error {
 async function spotifyFetch(url: string, accessToken: string): Promise<any> {
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
-    next: { revalidate: 0 },
+    cache: "no-store",
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -20,12 +20,26 @@ async function spotifyFetch(url: string, accessToken: string): Promise<any> {
 }
 
 export async function searchSpotify(query: string, type: string, accessToken: string, limit = 20) {
-  const isMulti = type === "all";
-  const t = isMulti ? "track,artist,album" : type;
   const safeLimit = Math.max(1, Math.min(limit, 50));
-  // Build URL manually — URLSearchParams encodes commas, but Spotify requires literal commas in "type"
-  const url = `${SPOTIFY_BASE}/search?q=${encodeURIComponent(query)}&type=${t}&limit=${safeLimit}`;
-  return spotifyFetch(url, accessToken);
+  const q = encodeURIComponent(query);
+
+  if (type !== "all") {
+    const url = `${SPOTIFY_BASE}/search?q=${q}&type=${type}&limit=${safeLimit}`;
+    return spotifyFetch(url, accessToken);
+  }
+
+  // For "all", make three separate requests to avoid Spotify rejecting multi-type queries
+  const [tracksData, artistsData, albumsData] = await Promise.all([
+    spotifyFetch(`${SPOTIFY_BASE}/search?q=${q}&type=track&limit=${safeLimit}`, accessToken),
+    spotifyFetch(`${SPOTIFY_BASE}/search?q=${q}&type=artist&limit=${safeLimit}`, accessToken),
+    spotifyFetch(`${SPOTIFY_BASE}/search?q=${q}&type=album&limit=${safeLimit}`, accessToken),
+  ]);
+
+  return {
+    tracks: tracksData.tracks,
+    artists: artistsData.artists,
+    albums: albumsData.albums,
+  };
 }
 
 export async function getRecommendations(
