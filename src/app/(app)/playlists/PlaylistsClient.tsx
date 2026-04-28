@@ -207,7 +207,7 @@ export default function PlaylistsClient() {
         <button
           onClick={() => setCreating(true)}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white font-semibold text-sm transition-all active:scale-95 shadow-lg"
-          style={{ background: "#f0a500", boxShadow: "0 4px 16px rgba(240,165,0,0.30)" }}
+          style={{ background: "#c0392b", boxShadow: "0 4px 16px rgba(240,165,0,0.30)" }}
         >
           <Plus size={15} /> New
         </button>
@@ -220,19 +220,19 @@ export default function PlaylistsClient() {
           <input
             autoFocus value={newName} onChange={(e) => setNewName(e.target.value)}
             placeholder="Playlist name"
-            className="w-full border text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#f0a500]/60 transition-all"
+            className="w-full border text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#c0392b]/60 transition-all"
             style={{ background: "var(--card)", borderColor: "rgba(255,255,255,0.08)" }}
           />
           <input
             value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
             placeholder="Description (optional)"
-            className="w-full border text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#f0a500]/60 transition-all"
+            className="w-full border text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#c0392b]/60 transition-all"
             style={{ background: "var(--card)", borderColor: "rgba(255,255,255,0.08)" }}
           />
           <div className="flex gap-2">
             <button
               onClick={createPlaylist} disabled={saving || !newName.trim()}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#f0a500] hover:bg-[#c47f00] disabled:opacity-40 text-white font-semibold text-sm transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#c0392b] hover:bg-[#a93226] disabled:opacity-40 text-white font-semibold text-sm transition-colors"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Create
             </button>
@@ -299,7 +299,7 @@ export default function PlaylistsClient() {
                       </div>
                     )}
                     {isPinned && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#f0a500] border-2 border-[var(--card)]" />
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#c0392b] border-2 border-[var(--card)]" />
                     )}
                   </div>
 
@@ -309,11 +309,11 @@ export default function PlaylistsClient() {
                       <input
                         autoFocus value={edit.name}
                         onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-                        className="flex-1 min-w-0 border text-white rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-[#f0a500]/60 transition-all"
+                        className="flex-1 min-w-0 border text-white rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-[#c0392b]/60 transition-all"
                         style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.08)" }}
                       />
                       <button onClick={saveEdit} disabled={saving}
-                        className="shrink-0 px-3 py-1.5 rounded-xl bg-[#f0a500] hover:bg-[#c47f00] text-white text-sm font-medium transition-colors">
+                        className="shrink-0 px-3 py-1.5 rounded-xl bg-[#c0392b] hover:bg-[#a93226] text-white text-sm font-medium transition-colors">
                         {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                       </button>
                       <button onClick={() => setEdit(null)}
@@ -339,7 +339,7 @@ export default function PlaylistsClient() {
                         onClick={(e) => { e.stopPropagation(); playTrack(tracks, 0); }}
                         title="Play all"
                         className="p-1.5 rounded-xl transition-colors"
-                        style={{ color: "#f0a500" }}
+                        style={{ color: "#c0392b" }}
                       >
                         <PlayCircle size={17} />
                       </button>
@@ -358,7 +358,7 @@ export default function PlaylistsClient() {
                       title={isPinned ? "Unpin" : "Pin"}
                       className="p-1.5 rounded-xl transition-colors"
                       style={{
-                        color: isPinned ? "#f0a500" : "rgba(255,255,255,0.28)",
+                        color: isPinned ? "#c0392b" : "rgba(255,255,255,0.28)",
                         background: isPinned ? "rgba(147,51,234,0.12)" : "transparent",
                       }}
                     >
@@ -407,7 +407,7 @@ export default function PlaylistsClient() {
                               {/* Number / play on hover */}
                               <div className="w-5 shrink-0 flex items-center justify-center">
                                 <span className="text-xs tabular-nums group-hover:hidden" style={{ color: "var(--text-muted)" }}>{i + 1}</span>
-                                <Play size={12} fill="currentColor" className="hidden group-hover:block text-[#f0a500]" />
+                                <Play size={12} fill="currentColor" className="hidden group-hover:block text-[#c0392b]" />
                               </div>
 
                               {/* Album art */}

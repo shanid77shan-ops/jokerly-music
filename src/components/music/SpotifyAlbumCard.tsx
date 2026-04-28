@@ -28,7 +28,7 @@ export default function SpotifyAlbumCard({ album }: Props) {
         )}
       </div>
       <div>
-        <p className="text-white text-sm font-semibold truncate group-hover:text-[#f0a500] transition-colors">
+        <p className="text-white text-sm font-semibold truncate group-hover:text-[#c0392b] transition-colors">
           {album.name}
         </p>
         <p className="text-white/40 text-xs truncate mt-0.5">{artists}</p>
