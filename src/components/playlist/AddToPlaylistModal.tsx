@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Check, Loader2 } from "lucide-react";
-import { addTrackToLocalPlaylist, createLocalPlaylist, useLocalPlaylists } from "@/lib/local-playlists";
+import { SpotifyPlaylist } from "@/types";
 
 interface PlaylistTrackPayload {
   name: string;
@@ -15,26 +15,26 @@ interface Props {
 }
 
 export default function AddToPlaylistModal({ track, onClose }: Props) {
-  const playlists = useLocalPlaylists();
+  const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
+  const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
-  const [newName, setNewName] = useState("");
-  const [newDesc, setNewDesc] = useState("");
 
-  const createAndAdd = async () => {
-    const name = newName.trim();
-    if (!name) return;
+  useEffect(() => {
+    fetch("/api/spotify/playlists")
+      .then((r) => r.json())
+      .then((d) => setPlaylists(d.items ?? []))
+      .finally(() => setLoading(false));
+  }, []);
 
-    const created = createLocalPlaylist(name, newDesc.trim());
-    setNewName("");
-    setNewDesc("");
-    await addToPlaylist(created.id);
-  };
-
-  const addToPlaylist = async (playlistId: string) => {
-    setAdding(playlistId);
-    addTrackToLocalPlaylist(playlistId, { uri: track.uri, name: track.name });
-    setAdded((prev) => new Set(prev).add(playlistId));
+  const addToPlaylist = async (playlist: SpotifyPlaylist) => {
+    setAdding(playlist.id);
+    await fetch(`/api/spotify/playlists/${playlist.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uris: [track.uri], trackName: track.name }),
+    });
+    setAdded((prev) => new Set(prev).add(playlist.id));
     setAdding(null);
     setTimeout(onClose, 700);
   };
@@ -56,34 +56,17 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
         </div>
 
         <div className="p-3 max-h-80 overflow-y-auto space-y-1">
-          {playlists.length === 0 ? (
-            <div className="space-y-3 py-3">
-              <p className="text-zinc-500 text-sm text-center">No playlists found. Create one now.</p>
-              <input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Playlist name"
-                className="w-full bg-zinc-800 text-white placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
-              <input
-                value={newDesc}
-                onChange={(e) => setNewDesc(e.target.value)}
-                placeholder="Description (optional)"
-                className="w-full bg-zinc-800 text-white placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
-              <button
-                onClick={createAndAdd}
-                disabled={!newName.trim()}
-                className="w-full px-3 py-2.5 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-50 text-black text-sm font-semibold transition-colors"
-              >
-                Create playlist and add song
-              </button>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 size={24} className="animate-spin text-zinc-500" />
             </div>
+          ) : playlists.length === 0 ? (
+            <p className="text-zinc-500 text-sm text-center py-8">No playlists found.</p>
           ) : (
             playlists.map((pl) => (
               <button
                 key={pl.id}
-                onClick={() => addToPlaylist(pl.id)}
+                onClick={() => addToPlaylist(pl)}
                 disabled={!!adding || added.has(pl.id)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-zinc-800 text-left transition-colors disabled:opacity-60"
               >
