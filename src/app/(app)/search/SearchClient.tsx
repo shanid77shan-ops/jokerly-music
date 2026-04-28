@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, Loader2, Music, Mic2, Play, ListPlus } from "lucide-react";
+import { Search, Loader2, Music, Mic2, Play, ListPlus, AlertCircle, RefreshCw, LogOut } from "lucide-react";
+import { signOut } from "next-auth/react";
 import SpotifyTrackCard from "@/components/music/SpotifyTrackCard";
 import SpotifyArtistCard from "@/components/music/SpotifyArtistCard";
 import SpotifyAlbumCard from "@/components/music/SpotifyAlbumCard";
@@ -56,6 +57,7 @@ export default function SearchClient() {
   const [albums, setAlbums] = useState<SpotifyAlbum[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [searchError, setSearchError] = useState<{ message: string; status: number } | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
   const [similarSeed, setSimilarSeed] = useState<SpotifyTrack | null>(null);
   const [similarTracks, setSimilarTracks] = useState<SpotifyTrack[]>([]);
@@ -154,6 +156,7 @@ export default function SearchClient() {
     setShowSuggestions(false);
     setSimilarSeed(null);
     setSimilarTracks([]);
+    setSearchError(null);
 
     const key = q.trim().toLowerCase();
     const cached = searchCache.get(key);
@@ -167,7 +170,11 @@ export default function SearchClient() {
     setLoading(true);
     try {
       const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(q)}&type=all&limit=20`);
-      if (!res.ok) throw new Error("Search failed. Try again.");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setSearchError({ message: body.error ?? `Search failed (${res.status})`, status: res.status });
+        return;
+      }
       const data = await res.json();
       const result = { tracks: data.tracks ?? [], artists: data.artists ?? [], albums: data.albums ?? [] };
       searchCache.set(key, result);
@@ -175,7 +182,7 @@ export default function SearchClient() {
       setArtists(result.artists);
       setAlbums(result.albums);
     } catch (e) {
-      toast((e as Error).message ?? "Search failed");
+      setSearchError({ message: (e as Error).message ?? "Search failed", status: 0 });
     } finally {
       setLoading(false);
     }
@@ -377,8 +384,42 @@ export default function SearchClient() {
         )}
       </div>
 
+      {/* Search error banner */}
+      {searchError && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 flex flex-col gap-3">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={18} className="text-red-400 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-red-300 text-sm font-medium">
+                {searchError.status === 401 ? "Session expired" :
+                 searchError.status === 429 ? "Too many requests — please wait a moment" :
+                 "Search failed"}
+              </p>
+              <p className="text-red-400/70 text-xs mt-0.5 break-all">{searchError.message}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {searchError.status === 401 ? (
+              <button
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="flex items-center gap-1.5 text-xs bg-red-500 hover:bg-red-400 text-white px-3 py-1.5 rounded-lg transition-colors font-medium"
+              >
+                <LogOut size={13} /> Sign out &amp; re-login
+              </button>
+            ) : (
+              <button
+                onClick={() => handleSearch()}
+                className="flex items-center gap-1.5 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors font-medium"
+              >
+                <RefreshCw size={13} /> Retry
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Full search results */}
-      {searched && !loading && (
+      {searched && !loading && !searchError && (
         <>
           <div className="flex gap-2">
             {TABS.map((t) => (
