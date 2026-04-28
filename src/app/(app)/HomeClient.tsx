@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { PinnedPlaylist } from "@/types";
 import Link from "next/link";
-import { Pin, Search, Loader2, Music, Mic2, Play } from "lucide-react";
+import { Pin, Search, Loader2, Music, Mic2, Play, ListPlus } from "lucide-react";
 import PinnedPlaylistSection from "@/components/home/PinnedPlaylistSection";
 import { SpotifyTrack, SpotifyArtist, trackImage, artistImage, artistNames } from "@/types/spotify";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import Image from "next/image";
+import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 
 interface Suggestion {
   type: "track" | "artist";
@@ -28,7 +28,6 @@ function toPlayable(s: Suggestion): PlayableTrack {
 }
 
 export default function HomeClient() {
-  const { data: session } = useSession();
   const router = useRouter();
   const [pinned, setPinned] = useState<PinnedPlaylist[]>([]);
   const [query, setQuery] = useState("");
@@ -36,13 +35,13 @@ export default function HomeClient() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [playingKey, setPlayingKey] = useState<string | null>(null);
+  const [modalTrack, setModalTrack] = useState<{ name: string; uri: string } | null>(null);
 
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestBoxRef = useRef<HTMLDivElement>(null);
 
   const { setQueueAndPlay } = usePlayerStore();
-  const firstName = session?.user?.name?.split(" ")[0] ?? "there";
 
   useEffect(() => {
     fetch("/api/pinned")
@@ -120,11 +119,6 @@ export default function HomeClient() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-white mb-1">Good evening, {firstName} 👋</h2>
-        <p className="text-zinc-400">What do you want to listen to?</p>
-      </div>
-
       {/* Search bar */}
       <div className="relative">
         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none z-10" />
@@ -163,28 +157,39 @@ export default function HomeClient() {
                   <div>
                     <p className="text-zinc-600 text-xs font-medium px-4 pt-3 pb-1 uppercase tracking-wider">Tracks</p>
                     {suggestions.filter((s) => s.type === "track").map((s) => (
-                      <button
+                      <div
                         key={s.id}
-                        onClick={() => handleSuggestionClick(s)}
-                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-800 transition-colors group text-left"
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800 transition-colors group"
                       >
-                        <div className="relative w-9 h-9 shrink-0">
-                          {s.image ? (
-                            <Image src={s.image} alt={s.name} fill unoptimized sizes="36px" className="rounded-md object-cover" />
-                          ) : (
-                            <div className="w-9 h-9 bg-zinc-700 rounded-md flex items-center justify-center">
-                              <Music size={13} className="text-zinc-500" />
+                        <button
+                          onClick={() => handleSuggestionClick(s)}
+                          className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                        >
+                          <div className="relative w-9 h-9 shrink-0">
+                            {s.image ? (
+                              <Image src={s.image} alt={s.name} fill unoptimized sizes="36px" className="rounded-md object-cover" />
+                            ) : (
+                              <div className="w-9 h-9 bg-zinc-700 rounded-md flex items-center justify-center">
+                                <Music size={13} className="text-zinc-500" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 rounded-md bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              {playingKey === s.id ? <Loader2 size={13} className="text-white animate-spin" /> : <Play size={13} className="text-white" />}
                             </div>
-                          )}
-                          <div className="absolute inset-0 rounded-md bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            {playingKey === s.id ? <Loader2 size={13} className="text-white animate-spin" /> : <Play size={13} className="text-white" />}
                           </div>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-white text-sm font-medium truncate">{s.name}</p>
-                          <p className="text-zinc-400 text-xs truncate">{s.sub}</p>
-                        </div>
-                      </button>
+                          <div className="min-w-0">
+                            <p className="text-white text-sm font-medium truncate">{s.name}</p>
+                            <p className="text-zinc-400 text-xs truncate">{s.sub}</p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); if (s.uri) setModalTrack({ name: s.name, uri: s.uri }); }}
+                          className="shrink-0 p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-700 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Add to playlist"
+                        >
+                          <ListPlus size={15} />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -240,6 +245,10 @@ export default function HomeClient() {
         </div>
         <PinnedPlaylistSection pinned={pinned} />
       </section>
+
+      {modalTrack && (
+        <AddToPlaylistModal track={modalTrack} onClose={() => setModalTrack(null)} />
+      )}
     </div>
   );
 }
