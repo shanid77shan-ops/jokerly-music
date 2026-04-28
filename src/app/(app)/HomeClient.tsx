@@ -214,14 +214,14 @@ export default function HomeClient() {
           onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); if (e.key === "Escape") setShowSuggestions(false); }}
           onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           placeholder="Search tracks, artists, albums…"
-          className="w-full border border-white/[0.08] text-white placeholder-white/25 rounded-2xl pl-11 pr-24 py-3.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#8b5cf6]/60 focus:border-[#8b5cf6]/40 transition-all"
+          className="w-full border border-white/[0.08] text-white placeholder-white/25 rounded-2xl pl-11 pr-24 py-3.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a84ff]/60 focus:border-[#0a84ff]/40 transition-all"
           style={{ background: "var(--card)" }}
           autoComplete="off"
         />
         <button
           onClick={handleSearch}
           disabled={!query.trim()}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-[#8b5cf6] hover:bg-[#7c3aed] disabled:opacity-30 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-colors"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-[#0a84ff] hover:bg-[#0060cc] disabled:opacity-30 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-colors"
         >
           Search
         </button>
@@ -251,7 +251,7 @@ export default function HomeClient() {
                           </div>
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); if (s.uri) setModalTrack({ name: s.name, uri: s.uri, image: s.image, artist: s.sub }); }}
-                          className="shrink-0 p-1.5 rounded-lg text-white/25 hover:text-[#8b5cf6] hover:bg-white/[0.07] transition-colors opacity-0 group-hover:opacity-100" title="Add to playlist">
+                          className="shrink-0 p-1.5 rounded-lg text-white/25 hover:text-[#0a84ff] hover:bg-white/[0.07] transition-colors opacity-0 group-hover:opacity-100" title="Add to playlist">
                           <ListPlus size={14} />
                         </button>
                       </div>
@@ -290,7 +290,7 @@ export default function HomeClient() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-white font-bold text-base flex items-center gap-2">
-            <Pin size={14} className="text-[#8b5cf6]" /> Pinned
+            <Pin size={14} className="text-[#0a84ff]" /> Pinned
           </h3>
           <Link href="/pinned" className="text-xs text-white/30 hover:text-white transition-colors">View all</Link>
         </div>
@@ -347,7 +347,7 @@ export default function HomeClient() {
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); track.uri && setModalTrack({ name: track.name, uri: track.uri, image: trackImage(track), artist: artistNames(track) }); }}
-                      className="p-1.5 rounded-lg text-white/20 hover:text-[#8b5cf6] hover:bg-white/[0.07] transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                      className="p-1.5 rounded-lg text-white/20 hover:text-[#0a84ff] hover:bg-white/[0.07] transition-colors opacity-0 group-hover:opacity-100 shrink-0"
                       title="Add to playlist">
                       <ListPlus size={14} />
                     </button>
@@ -361,7 +361,7 @@ export default function HomeClient() {
                 {section.artists.slice(0, 6).map((artist) => (
                   <button key={artist.id} onClick={() => router.push(`/search?q=${encodeURIComponent(artist.name)}`)}
                     className="flex flex-col items-center gap-2 group">
-                    <div className="relative w-full aspect-square rounded-full overflow-hidden bg-white/[0.06] ring-2 ring-white/[0.05] group-hover:ring-[#8b5cf6]/30 transition-all">
+                    <div className="relative w-full aspect-square rounded-full overflow-hidden bg-white/[0.06] ring-2 ring-white/[0.05] group-hover:ring-[#0a84ff]/30 transition-all">
                       {artistImage(artist) ? (
                         <Image src={artistImage(artist)!} alt={artist.name} fill unoptimized sizes="80px" className="object-cover group-hover:scale-105 transition-transform duration-300" />
                       ) : (

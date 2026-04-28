@@ -15,7 +15,8 @@ export default function SpotifyAlbumCard({ album }: Props) {
       href={album.external_urls.spotify}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex flex-col gap-2.5 p-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.07] hover:border-white/[0.12] hover:scale-[1.02] transition-all duration-200 group"
+      className="flex flex-col gap-2.5 p-3 rounded-2xl border hover:scale-[1.02] transition-all duration-200 group"
+      style={{ background: "var(--card)", borderColor: "var(--border)" }}
     >
       <div className="relative w-full aspect-square">
         {image ? (
@@ -27,7 +28,7 @@ export default function SpotifyAlbumCard({ album }: Props) {
         )}
       </div>
       <div>
-        <p className="text-white text-sm font-semibold truncate group-hover:text-[#8b5cf6] transition-colors">
+        <p className="text-white text-sm font-semibold truncate group-hover:text-[#0a84ff] transition-colors">
           {album.name}
         </p>
         <p className="text-white/40 text-xs truncate mt-0.5">{artists}</p>
