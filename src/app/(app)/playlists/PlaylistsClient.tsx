@@ -281,7 +281,13 @@ export default function PlaylistsClient() {
                 }}
               >
                 {/* ── Playlist header row ── */}
-                <div className="flex items-center gap-3 px-3 py-3 group">
+                <div
+                  className={`flex items-center gap-3 px-3 py-3 group transition-colors ${edit?.id !== pl.id ? "cursor-pointer" : ""}`}
+                  style={{ background: "transparent" }}
+                  onClick={() => { if (edit?.id !== pl.id) toggleExpand(pl); }}
+                  onMouseEnter={(e) => { if (edit?.id !== pl.id) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.025)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+                >
 
                   {/* Cover art */}
                   <div className="relative shrink-0 w-12 h-12">
@@ -317,15 +323,12 @@ export default function PlaylistsClient() {
                       </button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => toggleExpand(pl)}
-                      className="flex-1 min-w-0 text-left"
-                    >
+                    <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-semibold truncate leading-tight">{pl.name}</p>
                       <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
                         {pl.tracks?.total ?? 0} tracks{isPinned ? " · Pinned" : ""}
                       </p>
-                    </button>
+                    </div>
                   )}
 
                   {/* Action icons */}
@@ -370,13 +373,12 @@ export default function PlaylistsClient() {
                     >
                       {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                     </button>
-                    <button
-                      onClick={() => toggleExpand(pl)}
-                      className="p-1.5 rounded-xl transition-colors ml-0.5"
+                    <div
+                      className="p-1.5 rounded-xl ml-0.5 pointer-events-none"
                       style={{ color: "rgba(255,255,255,0.25)" }}
                     >
                       <ChevronDown size={15} className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
-                    </button>
+                    </div>
                   </div>
                 </div>
 
