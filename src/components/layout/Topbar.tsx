@@ -37,7 +37,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           <div className="h-px bg-white/[0.06]" />
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#f0a500] hover:bg-[#f0a500]/10 transition-colors text-sm font-medium"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#c0392b] hover:bg-[#c0392b]/10 transition-colors text-sm font-medium"
           >
             <X size={15} />
             Sign out
@@ -61,10 +61,10 @@ export default function Topbar() {
   return (
     <>
       {sessionError && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#f0a500] text-white text-sm px-4 py-2.5 flex items-center justify-between gap-3">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-[#c0392b] text-white text-sm px-4 py-2.5 flex items-center justify-between gap-3">
           <span>Your Spotify session expired. Please sign back in.</span>
           <button onClick={() => signOut({ callbackUrl: "/login" })}
-            className="shrink-0 bg-white text-[#f0a500] font-semibold text-xs px-3 py-1.5 rounded-lg">
+            className="shrink-0 bg-white text-[#c0392b] font-semibold text-xs px-3 py-1.5 rounded-lg">
             Sign out
           </button>
         </div>
@@ -82,7 +82,7 @@ export default function Topbar() {
           {/* Right side */}
           <div className="flex items-center gap-2">
             <Link href="/search"
-              className={`p-2 rounded-xl transition-colors ${pathname === "/search" ? "text-[#f0a500] bg-[#f0a500]/10" : "text-white/40 hover:text-white hover:bg-white/[0.07]"}`}
+              className={`p-2 rounded-xl transition-colors ${pathname === "/search" ? "text-[#c0392b] bg-[#c0392b]/10" : "text-white/40 hover:text-white hover:bg-white/[0.07]"}`}
               title="Search">
               <Search size={17} />
             </Link>
