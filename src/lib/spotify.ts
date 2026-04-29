@@ -33,7 +33,9 @@ function buildSearchUrl(query: string, type: string, limit: number, offset = 0) 
     q: query,
     type,
     limit: String(Math.floor(Math.max(1, Math.min(limit, 50)))),
-    market: "from_token",
+    // Do NOT pass market=from_token here — that value is only valid for
+    // player/artist endpoints. For search, Spotify uses the token's country
+    // automatically when a valid access token is provided.
   });
   // Only include offset when non-zero to avoid confusing Spotify
   if (offset > 0) params.set("offset", String(Math.min(Math.floor(offset), 100)));
