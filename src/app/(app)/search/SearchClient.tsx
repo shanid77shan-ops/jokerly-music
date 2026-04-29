@@ -43,19 +43,31 @@ function toPlayable(t: SpotifyTrack): PlayableTrack {
   return { name: t.name, artist: artistNames(t), image: trackImage(t), uri: t.uri, durationMs: t.duration_ms };
 }
 
-async function fetchType(q: string, type: "track" | "artist" | "album", limit = 20) {
-  const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}`);
+// Call Spotify directly — bypasses the server route entirely, avoids 400/502 issues
+async function fetchType(q: string, type: "track" | "artist" | "album", accessToken: string, limit = 20) {
+  const safeLimit = Math.max(1, Math.min(Math.floor(limit), 50));
+  const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=${type}&limit=${safeLimit}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.error ?? `Search failed (${res.status})` };
+    throw { status: res.status, message: body.error?.message ?? `Search failed (${res.status})` };
   }
-  return res.json();
+  const data = await res.json();
+  // Normalize: return flat arrays just like the old server route did
+  return {
+    tracks: data.tracks?.items ?? [],
+    artists: data.artists?.items ?? [],
+    albums: data.albums?.items ?? [],
+  };
 }
 
 export default function SearchClient() {
   const searchParams = useSearchParams();
   const initialQ = searchParams.get("q") ?? "";
   const router = useRouter();
+  const { data: session } = useSession();
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
 
   const [query, setQuery] = useState(initialQ);
@@ -89,13 +101,15 @@ export default function SearchClient() {
 
   // Fetch a single type — uses its own cache
   const doFetchType = useCallback(async (q: string, type: Tab) => {
+    const token = session?.accessToken as string | undefined;
+    if (!token) return;
     const key = q.trim().toLowerCase();
     if (type === "track") {
       const cached = trackCache.get(key);
       if (cached) { setTracks(cached); return; }
       setLoadingTracks(true);
       try {
-        const data = await fetchType(q, "track", 20);
+        const data = await fetchType(q, "track", token, 20);
         const items: SpotifyTrack[] = data.tracks ?? [];
         trackCache.set(key, items);
         setTracks(items);
@@ -108,7 +122,7 @@ export default function SearchClient() {
       if (cached) { setArtists(cached); return; }
       setLoadingArtists(true);
       try {
-        const data = await fetchType(q, "artist", 20);
+        const data = await fetchType(q, "artist", token, 20);
         const items: SpotifyArtist[] = data.artists ?? [];
         artistCache.set(key, items);
         setArtists(items);
@@ -118,13 +132,13 @@ export default function SearchClient() {
       if (cached) { setAlbums(cached); return; }
       setLoadingAlbums(true);
       try {
-        const data = await fetchType(q, "album", 20);
+        const data = await fetchType(q, "album", token, 20);
         const items: SpotifyAlbum[] = data.albums ?? [];
         albumCache.set(key, items);
         setAlbums(items);
       } catch { /* silent */ } finally { setLoadingAlbums(false); }
     }
-  }, []);
+  }, [session?.accessToken]);
 
   // Primary search — always starts with tracks tab
   const handleSearch = useCallback(async (q = query) => {
@@ -179,11 +193,13 @@ export default function SearchClient() {
     if (cached) { setSuggestions(cached); setShowSuggestions(true); return; }
     setSuggestionsLoading(true);
     setShowSuggestions(true);
+    const token = session?.accessToken as string | undefined;
     suggestTimer.current = setTimeout(async () => {
+      if (!token) { setSuggestionsLoading(false); return; }
       try {
         const [tracksRes, artistsRes] = await Promise.allSettled([
-          fetchType(query, "track", 5),
-          fetchType(query, "artist", 3),
+          fetchType(query, "track", token, 5),
+          fetchType(query, "artist", token, 3),
         ]);
         const trackSugs: Suggestion[] = tracksRes.status === "fulfilled"
           ? (tracksRes.value.tracks ?? []).slice(0, 5).map((t: SpotifyTrack) => ({
@@ -206,7 +222,7 @@ export default function SearchClient() {
       finally { setSuggestionsLoading(false); }
     }, 150);
     return () => clearTimeout(suggestTimer.current);
-  }, [query]);
+  }, [query, session?.accessToken]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

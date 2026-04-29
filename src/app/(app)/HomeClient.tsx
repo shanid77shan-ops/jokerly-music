@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { PinnedPlaylist } from "@/types";
 import Link from "next/link";
 import { Pin, Search, Loader2, Music, Mic2, Play, ListPlus, RefreshCw, Sparkles, SlidersHorizontal } from "lucide-react";
@@ -106,6 +107,7 @@ function PinnedSkeleton() {
 
 export default function HomeClient() {
   const router = useRouter();
+  const { data: session } = useSession();
   // Require non-empty feedSections so a failed/empty feed load never poisons the cache
   const hasFreshCache =
     homeCache !== null &&
@@ -259,19 +261,28 @@ export default function HomeClient() {
     if (cached) { setSuggestions(cached); setShowSuggestions(true); return; }
     setSuggestionsLoading(true);
     setShowSuggestions(true); // show dropdown with spinner immediately
+    const token = session?.accessToken as string | undefined;
     suggestTimer.current = setTimeout(async () => {
+      if (!token) { setSuggestionsLoading(false); return; }
       try {
+        const spotifySearch = async (type: string, limit: number) => {
+          const res = await fetch(
+            `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          return res.ok ? res.json() : { tracks: { items: [] }, artists: { items: [] } };
+        };
         const [tracksRes, artistsRes] = await Promise.allSettled([
-          fetch(`/api/spotify/search?q=${encodeURIComponent(query)}&type=track&limit=5`).then((r) => r.json()),
-          fetch(`/api/spotify/search?q=${encodeURIComponent(query)}&type=artist&limit=3`).then((r) => r.json()),
+          spotifySearch("track", 5),
+          spotifySearch("artist", 3),
         ]);
         const trackSugs: Suggestion[] = tracksRes.status === "fulfilled"
-          ? (tracksRes.value.tracks ?? []).slice(0, 5).map((t: SpotifyTrack) => ({
+          ? (tracksRes.value.tracks?.items ?? []).slice(0, 5).map((t: SpotifyTrack) => ({
               type: "track" as const, name: t.name, sub: artistNames(t), image: trackImage(t) ?? null, id: t.id, uri: t.uri, durationMs: t.duration_ms,
             }))
           : [];
         const artistSugs: Suggestion[] = artistsRes.status === "fulfilled"
-          ? (artistsRes.value.artists ?? []).slice(0, 3).map((a: SpotifyArtist) => ({
+          ? (artistsRes.value.artists?.items ?? []).slice(0, 3).map((a: SpotifyArtist) => ({
               type: "artist" as const, name: a.name, sub: a.followers?.total != null ? `${a.followers.total.toLocaleString()} followers` : "Artist",
               image: artistImage(a) ?? null, id: a.id,
             }))
@@ -284,7 +295,7 @@ export default function HomeClient() {
       } catch { setSuggestions([]); setShowSuggestions(false); } finally { setSuggestionsLoading(false); }
     }, 200);
     return () => clearTimeout(suggestTimer.current);
-  }, [query]);
+  }, [query, session?.accessToken]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
