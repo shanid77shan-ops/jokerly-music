@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  /* ── Layer system — deep red-black ── */
-  --background:   #080000;   /* deepest — near-black with red warmth  */
-  --surface:      #100404;   /* layer 1 — sheets, modals              */
-  --card:         #160606;   /* layer 2 — cards, rows                 */
-  --card-raised:  #200a0a;   /* layer 3 — hovered / elevated          */
+  /* ── Layer system — subtle red-black ── */
+  --background:   #040000;   /* deepest — near-black, faint red warmth */
+  --surface:      #0d0202;   /* layer 1 — sheets, modals               */
+  --card:         #120303;   /* layer 2 — cards, rows                  */
+  --card-raised:  #1a0606;   /* layer 3 — hovered / elevated           */
 
   /* ── Accent — warm red ── */
   --accent:       #ef4444;
@@ -19,9 +19,9 @@
   --text-secondary:  rgba(255, 255, 255, 0.60);
   --text-muted:      rgba(255, 255, 255, 0.30);
 
-  /* ── Borders — red-tinted ── */
-  --border:      rgba(239, 68, 68, 0.10);
-  --border-red:  rgba(239, 68, 68, 0.28);
+  /* ── Borders ── */
+  --border:      rgba(239, 68, 68, 0.08);
+  --border-red:  rgba(239, 68, 68, 0.22);
 }
 
 body {
@@ -29,17 +29,17 @@ body {
   color: var(--foreground);
 }
 
-/* Large top-center red orb — prominent like the login page */
+/* Top-center red orb */
 body::before {
   content: "";
   position: fixed;
-  top: -15%; left: 50%;
+  top: -10%; left: 50%;
   transform: translateX(-50%);
-  width: 900px;
-  height: 900px;
+  width: 800px;
+  height: 800px;
   background: radial-gradient(circle,
-    rgba(239, 68, 68, 0.18) 0%,
-    rgba(185, 28, 28, 0.10) 35%,
+    rgba(239, 68, 68, 0.13) 0%,
+    rgba(185, 28, 28, 0.06) 40%,
     transparent 65%
   );
   border-radius: 50%;
@@ -52,9 +52,9 @@ body::after {
   content: "";
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: 35vh;
-  background: radial-gradient(ellipse 70% 60% at 50% 120%,
-    rgba(239, 68, 68, 0.10) 0%,
+  height: 30vh;
+  background: radial-gradient(ellipse 65% 55% at 50% 120%,
+    rgba(239, 68, 68, 0.07) 0%,
     transparent 70%
   );
   pointer-events: none;
