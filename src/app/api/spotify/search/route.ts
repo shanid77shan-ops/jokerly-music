@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import { searchSpotify, SpotifyError } from "@/lib/spotify";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 30;
+
 export async function GET(req: NextRequest) {
   let session;
   try {

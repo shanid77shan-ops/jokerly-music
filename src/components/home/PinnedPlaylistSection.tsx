@@ -136,7 +136,7 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
                   </div>
                 )}
                 {/* Pinned dot */}
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#c0392b] border-2"
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#e53935] border-2"
                   style={{ borderColor: "var(--card)" }} />
               </div>
 
@@ -156,7 +156,7 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
                     disabled={!isPlayerReady}
                     title="Play all"
                     className="p-1.5 rounded-xl transition-colors disabled:opacity-40"
-                    style={{ color: "#c0392b" }}
+                    style={{ color: "#e53935" }}
                   >
                     <PlayCircle size={17} />
                   </button>
@@ -190,7 +190,7 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
                         {/* Number / play indicator */}
                         <div className="w-5 shrink-0 flex items-center justify-center">
                           <span className="text-xs tabular-nums group-hover:hidden" style={{ color: "var(--text-muted)" }}>{i + 1}</span>
-                          <Play size={12} fill="currentColor" className="hidden group-hover:block text-[#c0392b]" />
+                          <Play size={12} fill="currentColor" className="hidden group-hover:block text-[#e53935]" />
                         </div>
 
                         {/* Album art */}

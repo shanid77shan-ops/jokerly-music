@@ -3,6 +3,8 @@ import { searchSpotify, SpotifyError } from "@/lib/spotify";
 import { getLanguage } from "@/lib/languages";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 30;
+
 export async function GET(req: NextRequest) {
   let session;
   try { session = await auth(); } catch { return NextResponse.json({ error: "Auth error" }, { status: 401 }); }
@@ -13,6 +15,9 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const langs = (searchParams.get("langs") ?? "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 4);
+  // When a bust/refresh param is present, use a random offset so Spotify returns different results
+  const isBust = searchParams.has("r");
+  const offset = isBust ? Math.floor(Math.random() * 60) : 0;
 
   if (!langs.length) return NextResponse.json({ sections: [] });
 
@@ -23,8 +28,8 @@ export async function GET(req: NextRequest) {
       if (!lang) return null;
 
       const [trackData, artistData] = await Promise.all([
-        searchSpotify(lang.query, "track", session!.accessToken, 10),
-        searchSpotify(lang.artistQuery, "artist", session!.accessToken, 6),
+        searchSpotify(lang.query, "track", session!.accessToken, 10, offset),
+        searchSpotify(lang.artistQuery, "artist", session!.accessToken, 6, 0),
       ]);
 
       return {
@@ -54,8 +59,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ sections }, {
     headers: {
-      // Cache in browser for 5 min, CDN for 2 min — music feed doesn't need real-time freshness
-      "Cache-Control": "private, max-age=300, stale-while-revalidate=120",
+      // Short cache — 60s is enough to avoid duplicate requests on fast re-navigation
+      "Cache-Control": "private, max-age=60, stale-while-revalidate=30",
     },
   });
 }

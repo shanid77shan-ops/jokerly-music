@@ -7,10 +7,12 @@
   --card:        #160f35;   /* layer 2 — cards, rows          */
   --card-raised: #1f1648;   /* layer 3 — hovered / elevated   */
 
-  /* ── Accent — matte red ── */
-  --accent:      #c0392b;   /* flat matte red                 */
-  --accent-dim:  rgba(192, 57, 43, 0.14);
-  --accent-glow: rgba(192, 57, 43, 0.22);
+  /* ── Accent — glossy red ── */
+  --accent:      #e53935;
+  --accent-dim:  rgba(229, 57, 53, 0.14);
+  --accent-glow: rgba(229, 57, 53, 0.28);
+  --accent-btn:  linear-gradient(160deg, #ff5252 0%, #e53935 50%, #c62828 100%);
+  --accent-btn-hover: linear-gradient(160deg, #ff6e6e 0%, #f44336 50%, #d32f2f 100%);
 
   /* ── Secondary — violet ── */
   --violet:      #9333ea;
@@ -23,7 +25,7 @@
 
   /* ── Borders ── */
   --border:       rgba(147, 51, 234, 0.14);
-  --border-red:   rgba(192, 57, 43, 0.20);
+  --border-red:   rgba(229, 57, 53, 0.20);
 }
 
 body {
@@ -39,7 +41,7 @@ body::before {
   height: 60vh;
   background:
     radial-gradient(ellipse 90% 50% at 20% -10%, rgba(147,51,234,0.18) 0%, transparent 60%),
-    radial-gradient(ellipse 70% 40% at 80% -5%,  rgba(192,57,43,0.10) 0%, transparent 55%);
+    radial-gradient(ellipse 70% 40% at 80% -5%,  rgba(229,57,53,0.10) 0%, transparent 55%);
   pointer-events: none;
   z-index: 0;
 }
@@ -53,6 +55,21 @@ body::after {
   background: radial-gradient(ellipse 80% 50% at 50% 115%, rgba(147,51,234,0.12) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
+}
+
+/* Glossy red button — use via className="btn-red" */
+.btn-red {
+  background: var(--accent-btn);
+  box-shadow: 0 2px 12px rgba(229,57,53,0.35), inset 0 1px 0 rgba(255,255,255,0.18);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+.btn-red:hover {
+  background: var(--accent-btn-hover);
+  box-shadow: 0 4px 18px rgba(229,57,53,0.45), inset 0 1px 0 rgba(255,255,255,0.22);
+}
+.btn-red:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 6px rgba(229,57,53,0.30);
 }
 
 * {
