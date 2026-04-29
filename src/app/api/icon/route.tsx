@@ -9,9 +9,8 @@ export async function GET(req: NextRequest) {
   const raw = parseInt(new URL(req.url).searchParams.get("size") ?? "192", 10);
   const size = VALID_SIZES.includes(raw) ? raw : 192;
 
-  const squareSize = Math.round(size * 0.72);
-  const radius    = Math.round(size * 0.18);
-  const noteSize  = Math.round(size * 0.44);
+  // Build absolute URL for the logo so it works in both dev and production
+  const logoUrl = new URL("/logo.png", req.url).toString();
 
   return new ImageResponse(
     (
@@ -19,34 +18,23 @@ export async function GET(req: NextRequest) {
         style={{
           width: size,
           height: size,
-          background: "#000000",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          overflow: "hidden",
+          borderRadius: size * 0.18,
+          background: "#000000",
         }}
       >
-        {/* Red rounded-square badge */}
-        <div
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoUrl}
+          alt="Jokerly"
           style={{
-            width: squareSize,
-            height: squareSize,
-            borderRadius: radius,
-            background: "#ef4444",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center center",
           }}
-        >
-          {/* Music note */}
-          <svg
-            width={noteSize}
-            height={noteSize}
-            viewBox="0 0 24 24"
-            fill="white"
-          >
-            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-          </svg>
-        </div>
+        />
       </div>
     ),
     {
