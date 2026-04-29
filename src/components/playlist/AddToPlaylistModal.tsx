@@ -29,6 +29,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
   const [alreadyIn, setAlreadyIn] = useState<Set<string>>(new Set());
   // Playlist pending a duplicate confirmation
   const [confirmPlaylist, setConfirmPlaylist] = useState<SpotifyPlaylist | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,27 +62,34 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
     if (e.target === backdropRef.current) onClose();
   };
 
-  const doAdd = (playlist: SpotifyPlaylist) => {
+  const doAdd = async (playlist: SpotifyPlaylist) => {
     if (adding || added.has(playlist.id)) return;
     setAdding(playlist.id);
     setConfirmPlaylist(null);
+    setAddError(null);
 
-    setTimeout(() => {
+    try {
+      const res = await fetch(`/api/spotify/playlists/${playlist.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uris: [track.uri],
+          trackName: track.name,
+          trackImage: track.image ?? null,
+          trackArtist: track.artist ?? null,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Failed (${res.status})`);
+      }
       setAdded((prev) => new Set(prev).add(playlist.id));
-      setAdding(null);
       setTimeout(onClose, 500);
-    }, 120);
-
-    fetch(`/api/spotify/playlists/${playlist.id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        uris: [track.uri],
-        trackName: track.name,
-        trackImage: track.image ?? null,
-        trackArtist: track.artist ?? null,
-      }),
-    }).catch(() => {});
+    } catch (e) {
+      setAddError((e as Error).message ?? "Could not add track");
+    } finally {
+      setAdding(null);
+    }
   };
 
   const handlePlaylistClick = (playlist: SpotifyPlaylist) => {
@@ -137,6 +145,15 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
           </button>
         </div>
 
+        {/* Error banner */}
+        {addError && (
+          <div className="mx-3 mt-3 rounded-2xl border border-[#ef4444]/30 bg-[#ef4444]/10 p-3 flex items-start gap-2.5">
+            <AlertCircle size={15} className="text-[#ef4444] shrink-0 mt-0.5" />
+            <p className="text-white/70 text-xs leading-snug flex-1">{addError}</p>
+            <button onClick={() => setAddError(null)} className="text-white/30 hover:text-white shrink-0"><X size={13} /></button>
+          </div>
+        )}
+
         {/* Duplicate confirm banner */}
         {confirmPlaylist && (
           <div className="mx-3 mt-3 rounded-2xl border border-[#ef4444]/25 bg-[#ef4444]/08 p-3.5 flex flex-col gap-3">
@@ -144,7 +161,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
               <AlertCircle size={16} className="text-[#ef4444]/80 shrink-0 mt-0.5" />
               <p className="text-white/70 text-sm leading-snug">
                 <span className="text-white font-medium">&ldquo;{track.name}&rdquo;</span> is already in{" "}
-                <span className="text-white font-medium">{confirmPlaylist.name}</span>. Add it again?
+                <span className="text-white font-medium">{confirmPlaylist.name}</span>.
               </p>
             </div>
             <div className="flex gap-2">
@@ -152,7 +169,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
                 onClick={() => doAdd(confirmPlaylist)}
                 className="btn-red flex-1 py-2 rounded-xl text-white text-sm font-semibold"
               >
-                Add again
+                Add Anyway
               </button>
               <button
                 onClick={() => setConfirmPlaylist(null)}

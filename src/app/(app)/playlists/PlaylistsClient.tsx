@@ -52,7 +52,7 @@ export default function PlaylistsClient() {
   useEffect(() => { load(); }, []);
 
   const fetchTracks = async (id: string) => {
-    if (tracksMap[id]) return;
+    // Always refetch on expand — never use stale cache
     setLoadingTracks(id);
     try {
       const res = await fetch(`/api/spotify/playlists/${id}`);
