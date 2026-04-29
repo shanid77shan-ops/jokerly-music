@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, Loader2, Music, Mic2, Play, ListPlus, AlertCircle, RefreshCw, LogOut, ArrowLeft } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import SpotifyTrackCard from "@/components/music/SpotifyTrackCard";
 import SpotifyArtistCard from "@/components/music/SpotifyArtistCard";
