@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ items: data ?? [] }, {
-    headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" },
+    headers: { "Cache-Control": "no-store" },
   });
 }
 
@@ -48,19 +48,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!uri) return NextResponse.json({ error: "Track uri required" }, { status: 400 });
 
   const supabase = await createClient();
+
+  // Check if this exact track is already in the playlist (for duplicate detection)
+  const { data: existing } = await supabase
+    .from("playlist_tracks")
+    .select("id")
+    .eq("user_id", session.spotifyId)
+    .eq("playlist_id", id)
+    .eq("track_uri", uri)
+    .maybeSingle();
+
+  // If it already exists, update added_at so it moves to the top
+  // (upsert by id so we never silently swallow the row)
+  if (existing?.id) {
+    await supabase
+      .from("playlist_tracks")
+      .update({ added_at: new Date().toISOString() })
+      .eq("id", existing.id);
+    return NextResponse.json({ ok: true, duplicate: true });
+  }
+
+  // New track — plain insert
   const { data, error } = await supabase
     .from("playlist_tracks")
-    .upsert(
-      {
-        user_id: session.spotifyId,
-        playlist_id: id,
-        track_uri: uri,
-        track_name: String(trackName ?? "Track"),
-        track_image: trackImage ?? null,
-        track_artist: trackArtist ?? null,
-      },
-      { onConflict: "playlist_id,track_uri" }
-    )
+    .insert({
+      user_id: session.spotifyId,
+      playlist_id: id,
+      track_uri: uri,
+      track_name: String(trackName ?? "Track"),
+      track_image: trackImage ?? null,
+      track_artist: trackArtist ?? null,
+    })
     .select()
     .single();
 
