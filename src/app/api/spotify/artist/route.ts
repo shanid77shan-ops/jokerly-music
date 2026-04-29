@@ -4,17 +4,17 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 30;
 
-// Search Spotify for tracks by this artist, returning an array of track objects
-async function searchArtistTracks(artistName: string, artistId: string, accessToken: string) {
+const SPOTIFY = "https://api.spotify.com/v1";
+
+async function searchArtistTracks(artistName: string, artistId: string, token: string) {
   try {
     const q = encodeURIComponent(`artist:"${artistName}"`);
-    const res = await fetch(
-      `https://api.spotify.com/v1/search?q=${q}&type=track&limit=20`,
-      { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(5000) }
-    );
+    const res = await fetch(`${SPOTIFY}/search?q=${q}&type=track&limit=20`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(5000),
+    });
     if (!res.ok) return [];
     const data = await res.json();
-    // Only keep tracks that actually belong to this artist
     return (data.tracks?.items ?? []).filter((t: any) =>
       t.artists?.some((a: any) => a.id === artistId)
     );
@@ -27,41 +27,33 @@ export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.accessToken) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const id = new URL(req.url).searchParams.get("id");
+  const { searchParams } = new URL(req.url);
+  const id   = searchParams.get("id");
+  const name = searchParams.get("name") ?? ""; // passed from client to avoid extra round-trip
+
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
   const token = session.accessToken as string;
 
-  // Fetch artist info + user country in parallel
-  const [info, meData] = await Promise.all([
-    getArtist(id, token).catch((e) => { console.error("getArtist failed:", e); return null; }),
-    fetch("https://api.spotify.com/v1/me", { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(3000) })
-      .then((r) => r.ok ? r.json() : null)
-      .catch(() => null),
+  // Run ALL three fetches in one parallel round — no sequential awaits, fits well within 10s
+  const [infoRes, topRes, moreRes] = await Promise.allSettled([
+    getArtist(id, token),
+    // market=IN is appropriate for this app; Spotify returns globally available tracks too
+    fetch(`${SPOTIFY}/artists/${id}/top-tracks?market=IN`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(5000),
+    }).then((r) => r.ok ? r.json() : { tracks: [] }),
+    searchArtistTracks(name, id, token),
   ]);
+
+  const info       = infoRes.status === "fulfilled" ? infoRes.value : null;
+  const topTracks  = topRes.status  === "fulfilled" ? (topRes.value.tracks ?? []) : [];
+  const moreSongs  = moreRes.status === "fulfilled" ? moreRes.value : [];
 
   if (!info) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
 
-  // Use the user's actual country for market-restricted endpoints (top-tracks requires a real ISO code)
-  const market: string = meData?.country ?? "US";
+  const topIds   = new Set(topTracks.map((t: any) => t.id));
+  const moreTracks = moreSongs.filter((t: any) => !topIds.has(t.id)).slice(0, 10);
 
-  // Fetch top tracks + more songs in parallel
-  const [topTracksData, similarData] = await Promise.all([
-    fetch(`https://api.spotify.com/v1/artists/${id}/top-tracks?market=${market}`, {
-      headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000),
-    })
-      .then((r) => r.ok ? r.json() : { tracks: [] })
-      .catch(() => ({ tracks: [] })),
-    searchArtistTracks(info.name ?? "", id, token),
-  ]);
-
-  const topTrackIds = new Set((topTracksData.tracks ?? []).map((t: any) => t.id));
-  // Filter out tracks already shown in Top Tracks to avoid duplicates
-  const moreTracks = (similarData ?? []).filter((t: any) => !topTrackIds.has(t.id)).slice(0, 10);
-
-  return NextResponse.json({
-    info,
-    topTracks: topTracksData.tracks ?? [],
-    moreTracks,
-  });
+  return NextResponse.json({ info, topTracks, moreTracks });
 }

@@ -30,7 +30,7 @@ export default function ArtistSheet({ artist, onClose }: Props) {
   const { setQueueAndPlay } = usePlayerStore();
 
   useEffect(() => {
-    fetch(`/api/spotify/artist?id=${encodeURIComponent(artist.id)}`)
+    fetch(`/api/spotify/artist?id=${encodeURIComponent(artist.id)}&name=${encodeURIComponent(artist.name)}`)
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((d) => {
         setInfo(d.info ?? null);
