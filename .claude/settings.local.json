@@ -43,7 +43,8 @@
       "Bash(copy \"public\\\\manifest.webmanifest\" \"public\\\\manifest.json\")",
       "Bash(del \"public\\\\manifest.webmanifest\")",
       "Bash(xargs sed *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git log *)"
     ]
   }
 }

@@ -1,7 +1,16 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2, ChevronDown, Music, Play, Trash, PlayCircle } from "lucide-react";
+import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2, ChevronDown, Music, Play, Trash, PlayCircle, GripVertical } from "lucide-react";
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor,
+  useSensor, useSensors, DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, verticalListSortingStrategy,
+  useSortable, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { SpotifyPlaylist } from "@/types";
 import Image from "next/image";
 import { useToastStore } from "@/store/toast";
@@ -9,8 +18,90 @@ import { usePlayerStore, PlayableTrack } from "@/store/player";
 
 interface EditState { id: string; name: string; description: string; }
 interface PinnedRow { playlist_id: string; }
-interface PlaylistTrack { track_uri: string; track_name: string; track_image?: string | null; track_artist?: string | null; added_at: string; }
+interface PlaylistTrack { id: string; track_uri: string; track_name: string; track_image?: string | null; track_artist?: string | null; added_at: string; position: number; }
 
+// ── Sortable track row ──────────────────────────────────────────────────────
+function SortableTrackRow({
+  track, index, playlistId, onPlay, onRemove, removingKey,
+}: {
+  track: PlaylistTrack;
+  index: number;
+  playlistId: string;
+  onPlay: () => void;
+  onRemove: () => void;
+  removingKey: string | null;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: track.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    position: "relative",
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  const rmKey = `${playlistId}::${track.track_uri}`;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 px-2 py-2.5 group transition-colors cursor-pointer"
+      onClick={onPlay}
+    >
+      {/* Drag handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        className="shrink-0 p-1 rounded cursor-grab active:cursor-grabbing text-white/20 hover:text-white/50 transition-colors touch-none"
+        title="Drag to reorder"
+      >
+        <GripVertical size={14} />
+      </button>
+
+      {/* Track number / play indicator */}
+      <div className="w-5 shrink-0 flex items-center justify-center">
+        <span className="text-xs tabular-nums group-hover:hidden" style={{ color: "var(--text-muted)" }}>{index + 1}</span>
+        <Play size={12} fill="currentColor" className="hidden group-hover:block text-[#ef4444]" />
+      </div>
+
+      {/* Album art */}
+      <div className="relative w-9 h-9 rounded-lg shrink-0 overflow-hidden" style={{ background: "var(--card)" }}>
+        {track.track_image ? (
+          <Image src={track.track_image} alt={track.track_name} fill unoptimized sizes="36px" className="object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Music size={12} style={{ color: "var(--text-muted)" }} />
+          </div>
+        )}
+      </div>
+
+      {/* Track info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-white text-sm font-medium truncate leading-tight">{track.track_name}</p>
+        {track.track_artist && (
+          <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-muted)" }}>{track.track_artist}</p>
+        )}
+      </div>
+
+      {/* Remove */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        disabled={removingKey === rmKey}
+        title="Remove"
+        className="shrink-0 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
+        style={{ color: "rgba(255,255,255,0.25)" }}
+      >
+        {removingKey === rmKey ? <Loader2 size={12} className="animate-spin" /> : <Trash size={12} />}
+      </button>
+    </div>
+  );
+}
+
+// ── Main component ──────────────────────────────────────────────────────────
 export default function PlaylistsClient() {
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +119,29 @@ export default function PlaylistsClient() {
   const [removingTrack, setRemovingTrack] = useState<string | null>(null);
   const { toast } = useToastStore();
   const { setQueueAndPlay } = usePlayerStore();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent, playlistId: string) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const tracks = tracksMap[playlistId] ?? [];
+    const oldIdx = tracks.findIndex((t) => t.id === active.id);
+    const newIdx = tracks.findIndex((t) => t.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(tracks, oldIdx, newIdx);
+    // Optimistic update
+    setTracksMap((prev) => ({ ...prev, [playlistId]: reordered }));
+    // Persist to server
+    fetch(`/api/spotify/playlists/${playlistId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: reordered.map((t) => t.id) }),
+    }).catch(() => toast("Could not save order"));
+  };
 
   const load = async () => {
     setLoading(true);
@@ -392,57 +506,27 @@ export default function PlaylistsClient() {
                     ) : tracks.length === 0 ? (
                       <p className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>No tracks yet.</p>
                     ) : (
-                      <div>
-                        {tracks.map((t, i) => {
-                          const rmKey = `${pl.id}::${t.track_uri}`;
-                          return (
-                            <div
-                              key={t.track_uri}
-                              className="flex items-center gap-2.5 px-3 py-2.5 group transition-colors cursor-pointer"
-                              style={{ borderBottom: i < tracks.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none" }}
-                              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--card)")}
-                              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                              onClick={() => playTrack(tracks, i)}
-                            >
-                              {/* Number / play on hover */}
-                              <div className="w-5 shrink-0 flex items-center justify-center">
-                                <span className="text-xs tabular-nums group-hover:hidden" style={{ color: "var(--text-muted)" }}>{i + 1}</span>
-                                <Play size={12} fill="currentColor" className="hidden group-hover:block text-[#ef4444]" />
-                              </div>
-
-                              {/* Album art */}
-                              <div className="relative w-9 h-9 rounded-lg shrink-0 overflow-hidden" style={{ background: "var(--card)" }}>
-                                {t.track_image ? (
-                                  <Image src={t.track_image} alt={t.track_name} fill unoptimized sizes="36px" className="object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Music size={12} style={{ color: "var(--text-muted)" }} />
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Track info */}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-white text-sm font-medium truncate leading-tight">{t.track_name}</p>
-                                {t.track_artist && (
-                                  <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-muted)" }}>{t.track_artist}</p>
-                                )}
-                              </div>
-
-                              {/* Remove */}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); removeTrack(pl.id, t.track_uri); }}
-                                disabled={removingTrack === rmKey}
-                                title="Remove"
-                                className="shrink-0 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
-                                style={{ color: "rgba(255,255,255,0.25)" }}
-                              >
-                                {removingTrack === rmKey ? <Loader2 size={12} className="animate-spin" /> : <Trash size={12} />}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={(e) => handleDragEnd(e, pl.id)}
+                      >
+                        <SortableContext items={tracks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                          <div>
+                            {tracks.map((t, i) => (
+                              <SortableTrackRow
+                                key={t.id}
+                                track={t}
+                                index={i}
+                                playlistId={pl.id}
+                                onPlay={() => playTrack(tracks, i)}
+                                onRemove={() => removeTrack(pl.id, t.track_uri)}
+                                removingKey={removingTrack}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
                     )}
                   </div>
                 )}
