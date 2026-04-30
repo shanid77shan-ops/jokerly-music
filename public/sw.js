@@ -1,0 +1,66 @@
+// Jokerly Service Worker
+const CACHE_NAME = "jokerly-v1";
+
+// Core app shell — cached on install
+const PRECACHE = [
+  "/",
+  "/api/manifest",
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Only handle same-origin GET requests
+  if (request.method !== "GET" || url.origin !== self.location.origin) return;
+
+  // Skip API calls and auth routes — always network-first
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/")) {
+    return;
+  }
+
+  // Network-first for navigation (HTML pages)
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((res) => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(request, clone));
+          return res;
+        })
+        .catch(() => caches.match(request).then((r) => r ?? caches.match("/")))
+    );
+    return;
+  }
+
+  // Cache-first for static assets (JS, CSS, fonts, images)
+  event.respondWith(
+    caches.match(request).then(
+      (cached) =>
+        cached ??
+        fetch(request).then((res) => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((c) => c.put(request, clone));
+          }
+          return res;
+        })
+    )
+  );
+});

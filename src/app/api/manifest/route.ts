@@ -6,10 +6,13 @@ export function GET() {
     short_name: "Jokerly",
     description: "Discover, search, and play your music",
     start_url: "/",
+    scope: "/",
     display: "standalone",
     background_color: "#000000",
     theme_color: "#000000",
     orientation: "portrait",
+    categories: ["music", "entertainment"],
+    lang: "en",
     icons: [
       { src: "/api/icon?size=72",  sizes: "72x72",   type: "image/png", purpose: "any" },
       { src: "/api/icon?size=96",  sizes: "96x96",   type: "image/png", purpose: "any" },

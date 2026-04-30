@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import SessionWrapper from "@/components/layout/SessionWrapper";
 import ThemeProvider from "@/components/layout/ThemeProvider";
+import ServiceWorkerRegister from "@/components/layout/ServiceWorkerRegister";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <SessionWrapper>{children}</SessionWrapper>
         </ThemeProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
