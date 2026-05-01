@@ -15,7 +15,9 @@ interface PlayerState {
   currentTrack: PlayableTrack | null;
   queue: PlayableTrack[];
   queueIndex: number;
+  pendingIndex: number | null;
   isPlaying: boolean;
+  isTransitioning: boolean;
   progressMs: number;
   durationMs: number;
   isPlayerReady: boolean;
@@ -78,6 +80,10 @@ function getSpotifyCtor(): SpotifyPlayerCtor | null {
   return (window as typeof window & { Spotify?: SpotifyPlayerCtor }).Spotify ?? null;
 }
 
+// Spotify emits short-lived paused states during track switches.
+// Keep UI stable for a brief window right after a play request.
+let ignorePausedUntil = 0;
+
 async function loadSpotifySdk(): Promise<SpotifyPlayerCtor | null> {
   const existing = getSpotifyCtor();
   if (existing) return existing;
@@ -120,6 +126,10 @@ function hydrateFromSdkState(state: SpotifyPlayerState | null) {
   const sdkTrack = state.track_window.current_track;
   const prev = usePlayerStore.getState();
 
+  if (state.paused && state.position === 0 && Date.now() < ignorePausedUntil) {
+    return;
+  }
+
   // Spotify SDK can emit a transient paused+position=0 state during navigation/device churn.
   // If we were actively playing the same track and were not near the end, ignore it.
   if (state.paused && state.position === 0 && prev.isPlaying && prev.currentTrack?.uri === sdkTrack.uri) {
@@ -143,7 +153,9 @@ function hydrateFromSdkState(state: SpotifyPlayerState | null) {
   usePlayerStore.setState({
     currentTrack,
     queueIndex: queueIndex >= 0 ? queueIndex : usePlayerStore.getState().queueIndex,
+    pendingIndex: null,
     isPlaying: !state.paused,
+    isTransitioning: false,
     progressMs: state.position,
     durationMs: state.duration,
   });
@@ -165,11 +177,26 @@ async function spotifyApi(path: string, accessToken: string, options: RequestIni
   }
 }
 
+async function playerApi(action: "play" | "repeat" | "shuffle", body: Record<string, unknown>) {
+  const res = await fetch("/api/spotify/player", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, ...body }),
+  });
+
+  if (!res.ok) {
+    const details = await res.text().catch(() => "");
+    throw new Error(details || `Player API ${res.status}`);
+  }
+}
+
 export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
   currentTrack: null,
   queue: [],
   queueIndex: -1,
+  pendingIndex: null,
   isPlaying: false,
+  isTransitioning: false,
   progressMs: 0,
   durationMs: 0,
   isPlayerReady: false,
@@ -219,7 +246,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
       const snapshot = get();
       const idx = snapshot.queueIndex;
       if (snapshot.isPlaying && idx >= 0 && idx < snapshot.queue.length && snapshot.queue[idx]?.uri) {
-        get().playIndex(idx).catch(() => {});
+        Promise.resolve(get().playIndex(idx)).catch(() => {});
       }
     });
 
@@ -291,35 +318,67 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
   },
 
   playIndex: async (index) => {
-    const { queue, accessToken, deviceId } = get();
+    const { queue, deviceId, currentTrack, isPlaying, isTransitioning } = get();
     if (index < 0 || index >= queue.length) return;
+    if (isTransitioning) return;
+
+    const nextTrack = queue[index];
+    ignorePausedUntil = Date.now() + 1400;
+    const hasActivePlayback = !!currentTrack && isPlaying;
+    set({
+      pendingIndex: index,
+      isTransitioning: true,
+      ...(hasActivePlayback
+        ? {}
+        : {
+            queueIndex: index,
+            currentTrack: nextTrack,
+            isPlaying: true,
+            progressMs: 0,
+            durationMs: nextTrack.durationMs ?? 0,
+          }),
+    });
 
     const uriEntries = queue
       .map((track, queueIndex) => ({ uri: track.uri, queueIndex }))
       .filter((item): item is { uri: string; queueIndex: number } => Boolean(item.uri));
 
     const targetPosition = uriEntries.findIndex((item) => item.queueIndex === index);
-    if (targetPosition === -1 || !accessToken || !deviceId) {
-      set({ queueIndex: index, currentTrack: queue[index], isPlaying: false, progressMs: 0, durationMs: 0 });
+    if (targetPosition === -1 || !deviceId) {
+      set({
+        pendingIndex: null,
+        isTransitioning: false,
+        ...(hasActivePlayback
+          ? {}
+          : { queueIndex: index, currentTrack: queue[index], isPlaying: false, progressMs: 0, durationMs: 0 }),
+      });
       return;
     }
 
-    await spotifyApi(`/me/player/play?device_id=${encodeURIComponent(deviceId)}`, accessToken, {
-      method: "PUT",
-      body: JSON.stringify({
+    try {
+      await playerApi("play", {
+        deviceId,
         uris: uriEntries.map((item) => item.uri),
         offset: { position: targetPosition },
-        position_ms: 0,
-      }),
-    });
+        positionMs: 0,
+      });
+    } catch {
+      set({
+        pendingIndex: null,
+        isTransitioning: false,
+        ...(hasActivePlayback ? {} : { isPlaying: false }),
+      });
+      return;
+    }
 
-    const currentTrack = queue[index];
     set({
       queueIndex: index,
-      currentTrack,
+      currentTrack: nextTrack,
+      pendingIndex: null,
       isPlaying: true,
+      isTransitioning: false,
       progressMs: 0,
-      durationMs: currentTrack.durationMs ?? 0,
+      durationMs: nextTrack.durationMs ?? 0,
     });
   },
 
@@ -344,6 +403,8 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     set({
       currentTrack: null,
       isPlaying: false,
+      isTransitioning: false,
+      pendingIndex: null,
       queue: [],
       queueIndex: -1,
       progressMs: 0,
@@ -353,26 +414,18 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
 
   setRepeatMode: async (mode) => {
     set({ repeatMode: mode });
-    const { accessToken, deviceId } = get();
-    if (!accessToken || !deviceId) return;
+    const { deviceId } = get();
+    if (!deviceId) return;
     const state = mode === "one" ? "track" : mode === "all" ? "context" : "off";
-    await spotifyApi(
-      `/me/player/repeat?state=${state}&device_id=${encodeURIComponent(deviceId)}`,
-      accessToken,
-      { method: "PUT" }
-    ).catch(() => {});
+    await playerApi("repeat", { deviceId, state }).catch(() => {});
   },
 
   toggleShuffle: async () => {
     const next = !get().shuffleEnabled;
     set({ shuffleEnabled: next });
-    const { accessToken, deviceId } = get();
-    if (!accessToken || !deviceId) return;
-    await spotifyApi(
-      `/me/player/shuffle?state=${next}&device_id=${encodeURIComponent(deviceId)}`,
-      accessToken,
-      { method: "PUT" }
-    ).catch(() => {});
+    const { deviceId } = get();
+    if (!deviceId) return;
+    await playerApi("shuffle", { deviceId, state: next }).catch(() => {});
   },
 
   getNextIndex: () => {
@@ -425,7 +478,9 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     currentTrack: state.currentTrack,
     queue: state.queue,
     queueIndex: state.queueIndex,
+    pendingIndex: null,
     isPlaying: state.isPlaying,
+    isTransitioning: false,
     progressMs: state.progressMs,
     durationMs: state.durationMs,
     repeatMode: state.repeatMode,

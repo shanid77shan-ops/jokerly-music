@@ -3,9 +3,8 @@
 import { signOut, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { X, User, Settings, Search } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 function SettingsModal({ onClose }: { onClose: () => void }) {
   const { data: session } = useSession();
@@ -53,9 +52,21 @@ export default function Topbar() {
   const [showSettings, setShowSettings] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const sessionError = (session as { error?: string } | null)?.error;
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    router.prefetch("/");
+    router.prefetch("/search");
+  }, [router]);
+
+  const go = (e: React.PointerEvent<HTMLButtonElement> | React.MouseEvent<HTMLButtonElement>, target: "/" | "/search") => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (pathname === target) return;
+    router.push(target, { scroll: false });
+  };
   if (!mounted) return null;
 
   return (
@@ -74,18 +85,23 @@ export default function Topbar() {
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+          <button type="button"
+            onPointerDown={(e) => go(e, "/")}
+            onClick={(e) => e.preventDefault()}
+            className="flex items-center gap-2.5 shrink-0">
             <Image src="/icon-96.png" alt="Jokerly" width={34} height={34} className="rounded-xl" />
             <span className="text-[#E8282B] font-bold text-lg tracking-tight">Jokerly</span>
-          </Link>
+          </button>
 
           {/* Right side */}
           <div className="flex items-center gap-2">
-            <Link href="/search"
+            <button type="button"
+              onPointerDown={(e) => go(e, "/search")}
+              onClick={(e) => e.preventDefault()}
               className={`p-2 rounded-xl transition-colors ${pathname === "/search" ? "text-[#E8282B] bg-[#E8282B]/10" : "text-white/40 hover:text-white hover:bg-white/[0.07]"}`}
               title="Search">
               <Search size={17} />
-            </Link>
+            </button>
 
             <button onClick={() => setShowSettings(true)}
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-white/[0.07] transition-colors">

@@ -311,29 +311,30 @@ export default function SearchClient() {
 
         {/* Suggestions dropdown */}
         {showSuggestions && (suggestions.length > 0 || suggestionsLoading) && (
-          <div ref={suggestBoxRef} className="absolute top-full left-0 right-0 mt-1.5 bg-zinc-900 border border-zinc-700/60 rounded-2xl shadow-2xl z-50 overflow-hidden">
+          <div ref={suggestBoxRef} className="absolute top-full left-0 right-0 mt-1.5 rounded-2xl shadow-2xl z-50 overflow-hidden border border-[#E8282B]/15"
+            style={{ background: "var(--surface)", boxShadow: "0 12px 36px rgba(0,0,0,0.65)" }}>
             {suggestionsLoading && suggestions.length === 0 ? (
-              <div className="flex items-center justify-center py-5"><Loader2 size={16} className="animate-spin text-zinc-500" /></div>
+              <div className="flex items-center justify-center py-5"><Loader2 size={16} className="animate-spin text-white/30" /></div>
             ) : (
               <>
                 {suggestions.filter((s) => s.type === "track").length > 0 && (
                   <div>
-                    <p className="text-zinc-600 text-xs font-medium px-4 pt-3 pb-1 uppercase tracking-wider">Tracks</p>
+                    <p className="text-white/25 text-xs font-medium px-4 pt-3 pb-1 uppercase tracking-wider">Tracks</p>
                     {suggestions.filter((s) => s.type === "track").map((s) => {
                       const isResolving = resolvingSuggestKey === s.id;
                       const isLoading = playingKey === s.id;
                       return (
-                        <div key={s.id} className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800 transition-colors group">
+                        <div key={s.id} className="flex items-center gap-2 px-3 py-2 hover:bg-white/[0.05] transition-colors group">
                           <button onClick={() => handleSuggestionPlay(s)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
                             <div className="relative w-9 h-9 shrink-0">
-                              {s.image ? <Image src={s.image} alt={s.name} fill unoptimized sizes="36px" className="rounded-md object-cover" /> : <div className="w-9 h-9 bg-zinc-700 rounded-md flex items-center justify-center"><Music size={13} className="text-zinc-500" /></div>}
+                              {s.image ? <Image src={s.image} alt={s.name} fill unoptimized sizes="36px" className="rounded-md object-cover" /> : <div className="w-9 h-9 rounded-md flex items-center justify-center border border-white/[0.08]" style={{ background: "var(--card)" }}><Music size={13} className="text-white/30" /></div>}
                               <div className="absolute inset-0 rounded-md bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 {isLoading ? <Loader2 size={13} className="text-white animate-spin" /> : <Play size={13} className="text-white" />}
                               </div>
                             </div>
                             <div className="min-w-0">
                               <p className="text-white text-sm font-medium truncate">{s.name}</p>
-                              <p className="text-zinc-400 text-xs truncate">{s.sub}</p>
+                              <p className="text-white/45 text-xs truncate">{s.sub}</p>
                             </div>
                           </button>
                           {s.uri && (
@@ -348,25 +349,25 @@ export default function SearchClient() {
                   </div>
                 )}
                 {suggestions.filter((s) => s.type === "artist").length > 0 && (
-                  <div className="border-t border-zinc-800">
-                    <p className="text-zinc-600 text-xs font-medium px-4 pt-3 pb-1 uppercase tracking-wider">Artists</p>
+                  <div className="border-t border-white/[0.06]">
+                    <p className="text-white/25 text-xs font-medium px-4 pt-3 pb-1 uppercase tracking-wider">Artists</p>
                     {suggestions.filter((s) => s.type === "artist").map((s) => (
                       <button key={s.id} onClick={() => handleSuggestionPlay(s)}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-zinc-800 transition-colors text-left">
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.05] transition-colors text-left">
                         <div className="relative w-10 h-10 shrink-0">
-                          {s.image ? <Image src={s.image} alt={s.name} fill unoptimized sizes="40px" className="rounded-full object-cover" /> : <div className="w-10 h-10 bg-zinc-700 rounded-full flex items-center justify-center"><Mic2 size={14} className="text-zinc-500" /></div>}
+                          {s.image ? <Image src={s.image} alt={s.name} fill unoptimized sizes="40px" className="rounded-full object-cover" /> : <div className="w-10 h-10 rounded-full flex items-center justify-center border border-white/[0.08]" style={{ background: "var(--card)" }}><Mic2 size={14} className="text-white/30" /></div>}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-white text-sm font-medium truncate">{s.name}</p>
-                          <p className="text-zinc-500 text-xs truncate">{s.sub}</p>
+                          <p className="text-white/40 text-xs truncate">{s.sub}</p>
                         </div>
-                        <Search size={13} className="text-zinc-600 shrink-0" />
+                        <Search size={13} className="text-white/25 shrink-0" />
                       </button>
                     ))}
                   </div>
                 )}
-                <div className="border-t border-zinc-800 px-4 py-2">
-                  <button onClick={() => handleSearch()} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+                <div className="border-t border-white/[0.06] px-4 py-2">
+                  <button onClick={() => handleSearch()} className="text-xs text-white/40 hover:text-[#E8282B] transition-colors">
                     See all results for &ldquo;{query}&rdquo; →
                   </button>
                 </div>

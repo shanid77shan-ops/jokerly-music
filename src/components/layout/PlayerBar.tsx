@@ -23,7 +23,9 @@ export default function PlayerBar() {
     currentTrack,
     queue,
     queueIndex,
+    pendingIndex,
     isPlaying,
+    isTransitioning,
     progressMs,
     durationMs,
     isPlayerReady,
@@ -144,9 +146,10 @@ export default function PlayerBar() {
   const progressRatio = durationMs > 0 ? Math.min(progressMs / durationMs, 1) : 0;
   const noTrackUri = currentTrack.uri === null;
   const RepeatIcon = repeatMode === "one" ? Repeat1 : Repeat;
+  const pendingTrack = pendingIndex !== null ? queue[pendingIndex] ?? null : null;
 
   // Play button state
-  const playBusy = fetching || (!isPlayerReady && !sdkError);
+  const playBusy = (!currentTrack || !isPlaying) && (fetching || isTransitioning || (!isPlayerReady && !sdkError));
   const playDisabled = noTrackUri || playBusy;
 
   const cycleRepeatMode = () => {
@@ -191,25 +194,25 @@ export default function PlayerBar() {
                   )}
                 </div>
 
-                {/* Title + add */}
-                <div className="flex items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xl font-bold text-white">{currentTrack.name}</p>
-                    <p className="mt-0.5 truncate text-sm text-white/40">{currentTrack.artist}</p>
-                  </div>
-                  <button onClick={handleAddToPlaylist} disabled={resolvingAdd} title="Add to playlist"
-                    className="shrink-0 p-2.5 rounded-2xl text-white/30 hover:text-[#E8282B] hover:bg-[#E8282B]/10 transition-colors disabled:opacity-40">
-                    {resolvingAdd ? <Loader2 size={20} className="animate-spin" /> : <ListPlus size={20} />}
-                  </button>
+                {/* Title */}
+                <div className="min-w-0 text-center">
+                  <p className="truncate text-xl font-bold text-white">{currentTrack.name}</p>
+                  <p className="mt-0.5 truncate text-sm text-white/40">{currentTrack.artist}</p>
                 </div>
 
-                {/* Connecting indicator */}
-                {playBusy && !noTrackUri && (
-                  <div className="flex items-center justify-center gap-2 py-1">
-                    <Loader2 size={13} className="animate-spin text-white/30" />
-                    <span className="text-xs text-white/30">
-                      {fetching ? "Loading track…" : "Connecting to Spotify…"}
-                    </span>
+                {/* Switching indicator */}
+                {(isTransitioning || (playBusy && !noTrackUri)) && (
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-white/25">Up Next</p>
+                      <p className="text-sm text-white truncate">{pendingTrack?.name ?? currentTrack.name}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Loader2 size={13} className="animate-spin text-white/30" />
+                      <span className="text-xs text-white/30">
+                        {fetching ? "Loading track…" : isTransitioning ? "Switching…" : "Connecting…"}
+                      </span>
+                    </div>
                   </div>
                 )}
 
@@ -227,16 +230,17 @@ export default function PlayerBar() {
                 </div>
 
                 {/* Controls */}
-                <div className="flex items-center justify-between px-2">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-center gap-5">
                   <button onClick={toggleShuffle} title="Shuffle"
                     className={`p-3 rounded-2xl transition-colors ${shuffleEnabled ? "text-[#E8282B] bg-[#E8282B]/10" : "text-white/25 hover:text-white hover:bg-white/[0.07]"}`}>
                     <Shuffle size={18} />
                   </button>
-                  <button onClick={() => prevIndex !== null && fetchAndPlay(prevIndex)} title="Previous"
+                  <button onClick={() => prevIndex !== null && fetchAndPlay(prevIndex)} title="Previous" disabled={isTransitioning}
                     className="p-3 rounded-2xl text-white/70 hover:text-white hover:bg-white/[0.07] transition-colors">
                     <SkipBack size={22} fill="currentColor" />
                   </button>
-                  <button onClick={togglePlay} disabled={playDisabled} title={isPlaying ? "Pause" : "Play"}
+                  <button onClick={togglePlay} disabled={playDisabled || isTransitioning} title={isPlaying ? "Pause" : "Play"}
                     className="btn-red p-5 rounded-full active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed">
                     {playBusy
                       ? <Loader2 size={24} className="text-white animate-spin" />
@@ -245,7 +249,7 @@ export default function PlayerBar() {
                         : <Play size={24} fill="white" className="text-white" />
                     }
                   </button>
-                  <button onClick={() => nextIndex !== null && fetchAndPlay(nextIndex)} title="Next"
+                  <button onClick={() => nextIndex !== null && fetchAndPlay(nextIndex)} title="Next" disabled={isTransitioning}
                     className="p-3 rounded-2xl text-white/70 hover:text-white hover:bg-white/[0.07] transition-colors">
                     <SkipForward size={22} fill="currentColor" />
                   </button>
@@ -253,6 +257,13 @@ export default function PlayerBar() {
                     className={`p-3 rounded-2xl transition-colors ${repeatMode !== "off" ? "text-[#E8282B] bg-[#E8282B]/10" : "text-white/25 hover:text-white hover:bg-white/[0.07]"}`}>
                     <RepeatIcon size={18} />
                   </button>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <button onClick={handleAddToPlaylist} disabled={resolvingAdd} title="Add to playlist"
+                      className="shrink-0 p-2.5 rounded-2xl text-white/30 hover:text-[#E8282B] hover:bg-[#E8282B]/10 transition-colors disabled:opacity-40">
+                      {resolvingAdd ? <Loader2 size={18} className="animate-spin" /> : <ListPlus size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <p className="text-center text-xs text-white/20">{Math.max(queueIndex + 1, 1)} / {queue.length} in queue</p>
@@ -273,7 +284,7 @@ export default function PlayerBar() {
           </div>
         </div>
 
-        <div className="max-w-xl mx-auto px-4 h-[72px] flex items-center gap-4">
+        <div className="max-w-xl mx-auto px-4 h-[72px] grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
 
           {/* Artwork + track info */}
           <button
@@ -290,41 +301,37 @@ export default function PlayerBar() {
             <div className="min-w-0 flex-1">
               <p className="text-white text-sm font-semibold truncate leading-snug group-hover/info:text-[#E8282B]/90 transition-colors">{currentTrack.name}</p>
               <p className="text-white/40 text-xs truncate mt-0.5">
-                {playBusy && !noTrackUri ? (fetching ? "Loading…" : "Connecting…") : currentTrack.artist}
+                {isTransitioning && pendingTrack ? `Switching to ${pendingTrack.name}...` : currentTrack.artist}
               </p>
             </div>
           </button>
 
-          {/* Playback controls — centred */}
-          <div className="flex items-center gap-1 shrink-0">
+          {/* Playback controls */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button onClick={toggleShuffle} title="Shuffle"
               className={`p-2 rounded-xl transition-colors ${shuffleEnabled ? "text-[#E8282B]" : "text-white/30 hover:text-white"}`}>
               <Shuffle size={16} />
             </button>
-            <button onClick={() => prevIndex !== null && fetchAndPlay(prevIndex)} title="Previous"
-              className="p-2 rounded-xl text-white/40 hover:text-white transition-colors">
+            <button onClick={() => prevIndex !== null && fetchAndPlay(prevIndex)} title="Previous" disabled={isTransitioning}
+              className="p-2 rounded-xl text-white/40 hover:text-white transition-colors disabled:opacity-30">
               <SkipBack size={18} fill="currentColor" />
             </button>
-            <button onClick={togglePlay} disabled={playDisabled}
+            <button onClick={togglePlay} disabled={playDisabled || isTransitioning}
               className="btn-red mx-1 p-3 rounded-full active:scale-95 disabled:opacity-40 transition-transform">
-              {playBusy
+              {(!currentTrack || !isPlaying) && playBusy
                 ? <Loader2 size={18} className="text-white animate-spin" />
                 : isPlaying
                   ? <Pause size={18} fill="white" className="text-white" />
                   : <Play size={18} fill="white" className="text-white ml-0.5" />}
             </button>
-            <button onClick={() => nextIndex !== null && fetchAndPlay(nextIndex)} title="Next"
-              className="p-2 rounded-xl text-white/40 hover:text-white transition-colors">
+            <button onClick={() => nextIndex !== null && fetchAndPlay(nextIndex)} title="Next" disabled={isTransitioning}
+              className="p-2 rounded-xl text-white/40 hover:text-white transition-colors disabled:opacity-30">
               <SkipForward size={18} fill="currentColor" />
             </button>
             <button onClick={cycleRepeatMode} title={repeatMode === "one" ? "Repeat one" : repeatMode === "all" ? "Repeat all" : "Repeat off"}
               className={`p-2 rounded-xl transition-colors ${repeatMode !== "off" ? "text-[#E8282B]" : "text-white/30 hover:text-white"}`}>
               <RepeatIcon size={16} />
             </button>
-          </div>
-
-          {/* Right actions */}
-          <div className="flex items-center gap-1 shrink-0">
             <button onClick={handleAddToPlaylist} disabled={resolvingAdd} title="Add to playlist"
               className="p-2 rounded-xl text-[#E8282B]/50 hover:text-[#E8282B] hover:bg-[#E8282B]/10 transition-colors disabled:opacity-30">
               {resolvingAdd ? <Loader2 size={16} className="animate-spin" /> : <ListPlus size={16} />}

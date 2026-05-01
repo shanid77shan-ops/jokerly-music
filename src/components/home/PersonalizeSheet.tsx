@@ -84,11 +84,11 @@ export default function PersonalizeSheet({ initialLangs, initialArtists, onSave,
     <div
       ref={backdropRef}
       onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: "rgba(0,0,0,0.80)", backdropFilter: "blur(8px)" }}
     >
       <div className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden border border-white/[0.08] shadow-2xl"
-        style={{ background: "var(--surface)", maxHeight: "88vh" }}>
+        style={{ background: "var(--surface)", maxHeight: "min(88vh, calc(100vh - 16px))", marginBottom: "max(0px, env(safe-area-inset-bottom))" }}>
 
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
@@ -122,7 +122,7 @@ export default function PersonalizeSheet({ initialLangs, initialArtists, onSave,
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
+        <div className="flex-1 overflow-y-auto px-4 pb-6">
 
           {/* Languages tab */}
           {activeTab === "langs" && (
@@ -246,7 +246,8 @@ export default function PersonalizeSheet({ initialLangs, initialArtists, onSave,
         </div>
 
         {/* Save button */}
-        <div className="px-4 pb-6 pt-3 shrink-0 border-t border-white/[0.06]">
+        <div className="px-4 pt-3 shrink-0 border-t border-white/[0.06]"
+          style={{ paddingBottom: "max(24px, calc(env(safe-area-inset-bottom) + 12px))" }}>
           <button
             onClick={handleSave}
             disabled={saving || selectedLangs.length === 0}

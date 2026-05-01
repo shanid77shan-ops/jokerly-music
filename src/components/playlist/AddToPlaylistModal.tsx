@@ -105,12 +105,12 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
     <div
       ref={backdropRef}
       onClick={handleBackdrop}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
     >
       <div
         className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl border border-white/[0.08] flex flex-col"
-        style={{ background: "var(--surface)", maxHeight: "80vh" }}
+        style={{ background: "var(--surface)", maxHeight: "min(80vh, calc(100vh - 16px))", marginBottom: "max(0px, env(safe-area-inset-bottom))" }}
       >
         {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
@@ -212,8 +212,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
             })
           )}
         </div>
-
-        <div className="h-3 sm:h-1" />
+        <div className="shrink-0" style={{ height: "max(12px, calc(env(safe-area-inset-bottom) + 4px))" }} />
       </div>
     </div>
   );
