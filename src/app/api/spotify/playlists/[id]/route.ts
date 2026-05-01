@@ -49,23 +49,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const supabase = await createClient();
 
-  // Check if this exact track is already in the playlist (for duplicate detection)
-  const { data: existing } = await supabase
-    .from("playlist_tracks")
-    .select("id")
-    .eq("user_id", session.spotifyId)
-    .eq("playlist_id", id)
-    .eq("track_uri", uri)
-    .maybeSingle();
-
-  if (existing?.id) {
-    await supabase
-      .from("playlist_tracks")
-      .update({ added_at: new Date().toISOString() })
-      .eq("id", existing.id);
-    return NextResponse.json({ ok: true, duplicate: true });
-  }
-
   // Get the next position (add to bottom of list)
   const { count } = await supabase
     .from("playlist_tracks")

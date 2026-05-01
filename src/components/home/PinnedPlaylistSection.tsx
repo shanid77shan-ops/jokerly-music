@@ -54,7 +54,7 @@ function SortableTrackRow({
     zIndex: isDragging ? 10 : undefined,
   };
 
-  const rmKey = `${playlistId}::${track.track_uri}`;
+  const rmKey = `${playlistId}::${track.id}`;
 
   return (
     <div
@@ -216,19 +216,19 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
     [tracksMap, setQueueAndPlay]
   );
 
-  const removeTrack = async (playlistId: string, trackUri: string) => {
-    const key = `${playlistId}::${trackUri}`;
+  const removeTrack = async (playlistId: string, trackId: string) => {
+    const key = `${playlistId}::${trackId}`;
     setRemovingTrack(key);
     try {
       const res = await fetch(`/api/spotify/playlists/${playlistId}/tracks`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uri: trackUri }),
+        body: JSON.stringify({ trackId }),
       });
       if (!res.ok) throw new Error("Failed to remove track");
       setTracksMap((prev) => ({
         ...prev,
-        [playlistId]: (prev[playlistId] ?? []).filter((t) => t.track_uri !== trackUri),
+        [playlistId]: (prev[playlistId] ?? []).filter((t) => t.id !== trackId),
       }));
     } catch (e) {
       toast((e as Error).message ?? "Could not remove track");
@@ -288,14 +288,32 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
                 onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.025)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
               >
-                <div className="relative shrink-0 w-12 h-12">
-                  {pl.playlist_image ? (
-                    <Image src={pl.playlist_image} alt={pl.playlist_name} fill unoptimized sizes="48px" className="rounded-xl object-cover" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "var(--surface)" }}>
-                      <Pin size={18} style={{ color: "var(--text-muted)" }} />
-                    </div>
-                  )}
+                <div className="relative shrink-0">
+                  {(() => {
+                    const imgs = [...new Set(
+                      (tracksMap[pl.playlist_id] ?? []).map((t) => t.track_image).filter(Boolean) as string[]
+                    )].slice(0, 4);
+                    if (imgs.length >= 2) {
+                      const cells = [...imgs, ...Array(4).fill(null)].slice(0, 4);
+                      return (
+                        <div className="w-12 h-12 rounded-xl overflow-hidden grid grid-cols-2 shrink-0">
+                          {cells.map((img, i) => (
+                            <div key={i} className="relative w-6 h-6" style={{ background: "var(--surface)" }}>
+                              {img && <Image src={img} alt="" fill unoptimized sizes="24px" className="object-cover" />}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    if (pl.playlist_image) {
+                      return <Image src={pl.playlist_image} alt={pl.playlist_name} width={48} height={48} unoptimized className="rounded-xl object-cover w-12 h-12" />;
+                    }
+                    return (
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "var(--surface)" }}>
+                        <Pin size={18} style={{ color: "var(--text-muted)" }} />
+                      </div>
+                    );
+                  })()}
                   <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#E8282B] border-2" style={{ borderColor: "var(--card)" }} />
                 </div>
 
@@ -348,7 +366,7 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
                               index={i}
                               playlistId={pl.playlist_id}
                               onPlay={() => playAll(pl.playlist_id, i)}
-                              onRemove={() => removeTrack(pl.playlist_id, track.track_uri)}
+                              onRemove={() => removeTrack(pl.playlist_id, track.id)}
                               onAddToPlaylist={() => setAddModal({ name: track.track_name, uri: track.track_uri, image: track.track_image, artist: track.track_artist })}
                               removingKey={removingTrack}
                             />

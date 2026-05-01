@@ -44,7 +44,7 @@ function SortableTrackRow({
     zIndex: isDragging ? 10 : undefined,
   };
 
-  const rmKey = `${playlistId}::${track.track_uri}`;
+  const rmKey = `${playlistId}::${track.id}`;
 
   return (
     <div
@@ -211,6 +211,18 @@ export default function PlaylistsClient() {
 
   useEffect(() => { load(); }, []);
 
+  // Eagerly fetch tracks for all playlists so cover art is available immediately
+  useEffect(() => {
+    if (playlists.length === 0) return;
+    playlists.forEach((pl) => {
+      if (tracksMap[pl.id]) return; // already loaded
+      fetch(`/api/spotify/playlists/${pl.id}`)
+        .then((r) => r.json())
+        .then((data) => setTracksMap((prev) => ({ ...prev, [pl.id]: data.items ?? [] })))
+        .catch(() => {});
+    });
+  }, [playlists]);
+
   // Listen for tracks being added via AddToPlaylistModal and refresh immediately
   useEffect(() => {
     const handler = (e: Event) => {
@@ -266,19 +278,19 @@ export default function PlaylistsClient() {
     setQueueAndPlay(queue, index);
   };
 
-  const removeTrack = async (playlistId: string, trackUri: string) => {
-    const key = `${playlistId}::${trackUri}`;
+  const removeTrack = async (playlistId: string, trackId: string) => {
+    const key = `${playlistId}::${trackId}`;
     setRemovingTrack(key);
     try {
       const res = await fetch(`/api/spotify/playlists/${playlistId}/tracks`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uri: trackUri }),
+        body: JSON.stringify({ trackId }),
       });
       if (!res.ok) throw new Error("Failed to remove track");
       setTracksMap((prev) => ({
         ...prev,
-        [playlistId]: (prev[playlistId] ?? []).filter((t) => t.track_uri !== trackUri),
+        [playlistId]: (prev[playlistId] ?? []).filter((t) => t.id !== trackId),
       }));
       setPlaylists((prev) =>
         prev.map((p) =>
@@ -581,7 +593,7 @@ export default function PlaylistsClient() {
                                 index={i}
                                 playlistId={pl.id}
                                 onPlay={() => playTrack(tracks, i)}
-                                onRemove={() => removeTrack(pl.id, t.track_uri)}
+                                onRemove={() => removeTrack(pl.id, t.id)}
                                 onAddToPlaylist={() => setAddModal({ name: t.track_name, uri: t.track_uri, image: t.track_image, artist: t.track_artist })}
                                 removingKey={removingTrack}
                               />
