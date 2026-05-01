@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 const SESSION_COOKIE = "authjs.session-token";
 const SECURE_SESSION_COOKIE = "__Secure-authjs.session-token";
 
+const STATIC_FILE_EXT_RE = /\.(?:png|jpg|jpeg|svg|webp|ico|json|webmanifest|txt|xml|js|css|map)$/i;
+
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -11,7 +13,13 @@ export function proxy(req: NextRequest) {
   if (
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
-    pathname === "/favicon.ico"
+    pathname === "/favicon.ico" ||
+    pathname === "/manifest.json" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    STATIC_FILE_EXT_RE.test(pathname)
   ) {
     return NextResponse.next();
   }

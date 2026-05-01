@@ -61,7 +61,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
   };
 
   const doAdd = async (playlist: SpotifyPlaylist) => {
-    if (adding || added.has(playlist.id) || alreadyIn.has(playlist.id)) return;
+    if (adding || added.has(playlist.id)) return;
     setAdding(playlist.id);
     setAddError(null);
 
@@ -77,17 +77,15 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
         }),
       });
       if (!res.ok) {
-        if (res.status === 409) {
-          // Already in playlist — update UI silently
-          setAlreadyIn((prev) => new Set(prev).add(playlist.id));
-          return;
-        }
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `Failed (${res.status})`);
       }
+      const body = await res.json().catch(() => ({}));
       setAdded((prev) => new Set(prev).add(playlist.id));
-      // Notify playlist views to refresh immediately
-      window.dispatchEvent(new CustomEvent("playlist-updated", { detail: { playlistId: playlist.id } }));
+      if (!body.alreadyExists) {
+        // Only fire event if truly newly added
+        window.dispatchEvent(new CustomEvent("playlist-updated", { detail: { playlistId: playlist.id } }));
+      }
       setTimeout(onClose, 500);
     } catch (e) {
       setAddError("Could not add track. Please try again.");
@@ -97,7 +95,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
   };
 
   const handlePlaylistClick = (playlist: SpotifyPlaylist) => {
-    if (adding || added.has(playlist.id) || alreadyIn.has(playlist.id)) return;
+    if (adding || added.has(playlist.id)) return;
     doAdd(playlist);
   };
 
@@ -105,20 +103,15 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
     <div
       ref={backdropRef}
       onClick={handleBackdrop}
-      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
     >
       <div
-        className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl border border-white/[0.08] flex flex-col"
-        style={{ background: "var(--surface)", maxHeight: "min(80vh, calc(100vh - 16px))", marginBottom: "max(0px, env(safe-area-inset-bottom))" }}
+        className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-white/[0.08] flex flex-col"
+        style={{ background: "var(--surface)", maxHeight: "min(82vh, calc(100vh - 32px))" }}
       >
-        {/* Drag handle (mobile) */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-white/20" />
-        </div>
-
         {/* Header — track info */}
-        <div className="flex items-center gap-3 px-4 pt-3 pb-4 border-b border-white/[0.06]">
+        <div className="flex items-center gap-3 px-4 pt-4 pb-4 border-b border-white/[0.06]">
           <div className="relative w-12 h-12 shrink-0 rounded-xl overflow-hidden"
             style={{ background: "var(--card)" }}>
             {track.image ? (
@@ -153,7 +146,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
           </div>
         )}
 
-        {/* Duplicate confirm banner removed — duplicates are blocked */}
+        {/* Duplicates are allowed and shown as "Add again" */}
 
         {/* Playlist list */}
         <div className="px-2 py-2 flex-1 overflow-y-auto min-h-0 space-y-0.5">
@@ -171,15 +164,15 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
             playlists.map((pl) => {
               const isAdded = added.has(pl.id);
               const isAdding = adding === pl.id;
-              const isDuplicate = alreadyIn.has(pl.id) || isAdded;
+              const canAddAgain = alreadyIn.has(pl.id) && !isAdded;
               return (
                 <button
                   key={pl.id}
                   onClick={() => handlePlaylistClick(pl)}
-                  disabled={isDuplicate || !!adding}
+                  disabled={!!adding}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left transition-all border ${
-                    isDuplicate
-                      ? "opacity-50 border-transparent cursor-not-allowed"
+                    canAddAgain
+                      ? "hover:bg-[#E8282B]/8 border-[#E8282B]/18"
                       : "hover:bg-white/[0.05] border-transparent"
                   }`}
                 >
@@ -200,9 +193,13 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
                   </span>
 
                   {/* Right badge */}
-                  {isDuplicate ? (
+                  {isAdded ? (
                     <span className="text-[10px] font-semibold text-white/40 bg-white/[0.07] border border-white/10 px-2 py-0.5 rounded-full shrink-0">
-                      In playlist
+                      Added
+                    </span>
+                  ) : canAddAgain ? (
+                    <span className="text-[10px] font-semibold text-[#E8282B] bg-[#E8282B]/10 border border-[#E8282B]/25 px-2 py-0.5 rounded-full shrink-0">
+                      Add again
                     </span>
                   ) : isAdding ? (
                     <Loader2 size={16} className="animate-spin text-[#E8282B]/50 shrink-0" />
@@ -212,7 +209,6 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
             })
           )}
         </div>
-        <div className="shrink-0" style={{ height: "max(12px, calc(env(safe-area-inset-bottom) + 4px))" }} />
       </div>
     </div>
   );

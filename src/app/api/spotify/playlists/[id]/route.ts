@@ -49,17 +49,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const supabase = await createClient();
 
-  // Reject duplicate — same track already in this playlist
-  const { data: existing } = await supabase
-    .from("playlist_tracks")
-    .select("id")
-    .eq("playlist_id", id)
-    .eq("user_id", session.spotifyId)
-    .eq("track_uri", uri)
-    .maybeSingle();
-
-  if (existing) return NextResponse.json({ error: "Track already in playlist" }, { status: 409 });
-
   // Get the next position (add to bottom of list)
   const { count } = await supabase
     .from("playlist_tracks")
@@ -82,9 +71,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single();
 
   if (error) {
-    // Unique constraint violation — same as duplicate check above
+    // Unique constraint violation — track already in playlist, treat as success
     if ((error as { code?: string }).code === "23505") {
-      return NextResponse.json({ error: "Track already in playlist" }, { status: 409 });
+      return NextResponse.json({ alreadyExists: true }, { status: 200 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
