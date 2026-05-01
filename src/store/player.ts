@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 export interface PlayableTrack {
   name: string;
@@ -117,6 +118,15 @@ function hydrateFromSdkState(state: SpotifyPlayerState | null) {
   }
 
   const sdkTrack = state.track_window.current_track;
+  const prev = usePlayerStore.getState();
+
+  // Spotify SDK can emit a transient paused+position=0 state during navigation/device churn.
+  // If we were actively playing the same track and were not near the end, ignore it.
+  if (state.paused && state.position === 0 && prev.isPlaying && prev.currentTrack?.uri === sdkTrack.uri) {
+    const nearEnd = prev.durationMs > 0 && prev.progressMs >= Math.max(0, prev.durationMs - 1500);
+    if (!nearEnd) return;
+  }
+
   const { queue } = usePlayerStore.getState();
   const queueIndex = queue.findIndex((item) => item.uri === sdkTrack.uri);
   const currentTrack =
@@ -155,7 +165,7 @@ async function spotifyApi(path: string, accessToken: string, options: RequestIni
   }
 }
 
-export const usePlayerStore = create<PlayerState>((set, get) => ({
+export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
   currentTrack: null,
   queue: [],
   queueIndex: -1,
@@ -203,6 +213,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // active Spotify session on the user's account. The device_id is already
       // embedded in every subsequent /me/player/play call, which activates this
       // device automatically when the user first plays a track.
+
+      // Recover playback after route hard reloads: if app believed we were
+      // playing and we still have a valid queue item, resume it on this device.
+      const snapshot = get();
+      const idx = snapshot.queueIndex;
+      if (snapshot.isPlaying && idx >= 0 && idx < snapshot.queue.length && snapshot.queue[idx]?.uri) {
+        get().playIndex(idx).catch(() => {});
+      }
     });
 
     player.addListener("not_ready", () => {
@@ -217,6 +235,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const currentUri = nextState?.track_window.current_track.uri;
       const likelyEnded =
         previous.isPlaying &&
+        previous.durationMs > 0 &&
+        previous.progressMs >= Math.max(0, previous.durationMs - 1500) &&
         previous.progressMs > 0 &&
         !!nextState &&
         nextState.paused &&
@@ -398,4 +418,35 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (repeatMode === "all") return queue.length - 1;
     return null;
   },
+}), {
+  name: "jokerly-player-v1",
+  storage: createJSONStorage(() => sessionStorage),
+  partialize: (state) => ({
+    currentTrack: state.currentTrack,
+    queue: state.queue,
+    queueIndex: state.queueIndex,
+    isPlaying: state.isPlaying,
+    progressMs: state.progressMs,
+    durationMs: state.durationMs,
+    repeatMode: state.repeatMode,
+    shuffleEnabled: state.shuffleEnabled,
+    isPlayerExpanded: false,
+    endedToken: 0,
+    isPlayerReady: false,
+    sdkError: null,
+    player: null,
+    deviceId: null,
+    accessToken: null,
+    initializePlayer: state.initializePlayer,
+    setQueueAndPlay: state.setQueueAndPlay,
+    updateTrackUri: state.updateTrackUri,
+    playIndex: state.playIndex,
+    togglePlay: state.togglePlay,
+    seek: state.seek,
+    stop: state.stop,
+    setRepeatMode: state.setRepeatMode,
+    toggleShuffle: state.toggleShuffle,
+    getNextIndex: state.getNextIndex,
+    getPrevIndex: state.getPrevIndex,
+  }),
 }));

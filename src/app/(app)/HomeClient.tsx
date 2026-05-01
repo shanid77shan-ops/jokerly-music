@@ -13,7 +13,7 @@ import { SpotifyTrack, SpotifyArtist, trackImage, artistImage, artistNames } fro
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import Image from "next/image";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
-import { getLanguage } from "@/lib/languages";
+import { LANGUAGES } from "@/lib/languages";
 
 interface Suggestion {
   type: "track" | "artist";
@@ -417,20 +417,10 @@ export default function HomeClient() {
         {pinnedLoading ? <PinnedSkeleton /> : <PinnedPlaylistSection pinned={pinned} />}
       </section>
 
-      {/* Language tags + action buttons */}
+      {/* Action buttons */}
       {langs && langs.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
-            {langs.map((id) => {
-              const l = getLanguage(id);
-              return l ? (
-                <span key={id} className="text-xs border border-white/[0.08] text-white/50 px-2.5 py-1 rounded-full" style={{ background: "var(--card)" }}>
-                  {l.emoji} {l.label}
-                </span>
-              ) : null;
-            })}
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
             {/* Personalize */}
             <button onClick={() => setShowPersonalize(true)}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-white/[0.10] text-white/50 hover:text-white hover:border-[#E8282B]/40 transition-all"

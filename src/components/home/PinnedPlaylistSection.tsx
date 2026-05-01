@@ -68,7 +68,8 @@ function SortableTrackRow({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: track.id });
-  const { currentTrack, isPlaying } = usePlayerStore((s) => ({ currentTrack: s.currentTrack, isPlaying: s.isPlaying }));
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isCurrentlyPlaying = isPlaying && !!currentTrack?.uri && currentTrack.uri === track.track_uri;
 
   const style: React.CSSProperties = {

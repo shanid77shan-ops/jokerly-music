@@ -81,7 +81,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    // Unique constraint violation — same as duplicate check above
+    if ((error as { code?: string }).code === "23505") {
+      return NextResponse.json({ error: "Track already in playlist" }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json(data);
 }
 

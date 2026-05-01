@@ -77,6 +77,11 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
         }),
       });
       if (!res.ok) {
+        if (res.status === 409) {
+          // Already in playlist — update UI silently
+          setAlreadyIn((prev) => new Set(prev).add(playlist.id));
+          return;
+        }
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `Failed (${res.status})`);
       }
@@ -85,7 +90,7 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
       window.dispatchEvent(new CustomEvent("playlist-updated", { detail: { playlistId: playlist.id } }));
       setTimeout(onClose, 500);
     } catch (e) {
-      setAddError((e as Error).message ?? "Could not add track");
+      setAddError("Could not add track. Please try again.");
     } finally {
       setAdding(null);
     }
@@ -104,8 +109,8 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
       style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
     >
       <div
-        className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl border border-white/[0.08]"
-        style={{ background: "var(--surface)" }}
+        className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl border border-white/[0.08] flex flex-col"
+        style={{ background: "var(--surface)", maxHeight: "80vh" }}
       >
         {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
@@ -141,17 +146,17 @@ export default function AddToPlaylistModal({ track, onClose }: Props) {
 
         {/* Error banner */}
         {addError && (
-          <div className="mx-3 mt-3 rounded-2xl border border-[#E8282B]/30 bg-[#E8282B]/10 p-3 flex items-start gap-2.5">
-            <AlertCircle size={15} className="text-[#E8282B] shrink-0 mt-0.5" />
-            <p className="text-white/70 text-xs leading-snug flex-1">{addError}</p>
-            <button onClick={() => setAddError(null)} className="text-white/30 hover:text-white shrink-0"><X size={13} /></button>
+          <div className="mx-3 mt-2 rounded-xl border border-[#E8282B]/25 bg-[#E8282B]/8 px-3 py-2 flex items-center gap-2">
+            <AlertCircle size={13} className="text-[#E8282B] shrink-0" />
+            <p className="text-white/60 text-xs flex-1">{addError}</p>
+            <button onClick={() => setAddError(null)} className="text-white/25 hover:text-white shrink-0"><X size={12} /></button>
           </div>
         )}
 
         {/* Duplicate confirm banner removed — duplicates are blocked */}
 
         {/* Playlist list */}
-        <div className="px-2 py-2 max-h-72 overflow-y-auto space-y-0.5">
+        <div className="px-2 py-2 flex-1 overflow-y-auto min-h-0 space-y-0.5">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <Loader2 size={22} className="animate-spin text-[#E8282B]/60" />
