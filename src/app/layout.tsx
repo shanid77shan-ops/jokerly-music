@@ -4,6 +4,7 @@ import "./globals.css";
 import SessionWrapper from "@/components/layout/SessionWrapper";
 import ThemeProvider from "@/components/layout/ThemeProvider";
 import ServiceWorkerRegister from "@/components/layout/ServiceWorkerRegister";
+import InstallPrompt from "@/components/layout/InstallPrompt";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SessionWrapper>{children}</SessionWrapper>
         </ThemeProvider>
         <ServiceWorkerRegister />
+        <InstallPrompt />
       </body>
     </html>
   );
