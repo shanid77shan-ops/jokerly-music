@@ -31,6 +31,11 @@ body {
   color: var(--foreground);
 }
 
+/* Prevent iOS Safari auto-zoom on input focus (requires font-size >= 16px) */
+input, textarea, select {
+  font-size: max(16px, 1em);
+}
+
 /* Red glow from top */
 body::before {
   content: "";
