@@ -264,8 +264,14 @@ export default function PlaylistsClient() {
         body: JSON.stringify({ name: newName.trim(), description: newDesc.trim() }),
       });
       if (!res.ok) throw new Error("Failed to create playlist");
+      const created = (await res.json()) as SpotifyPlaylist;
+
+      setPlaylists((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
+      setTracksMap((prev) => ({ ...prev, [created.id]: prev[created.id] ?? [] }));
+
       setNewName(""); setNewDesc(""); setCreating(false);
-      await load();
+      // Keep server-derived fields in sync without blocking immediate UI update.
+      void load();
     } catch (e) {
       toast((e as Error).message ?? "Could not create playlist");
     } finally {
