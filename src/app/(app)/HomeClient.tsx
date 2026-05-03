@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PinnedPlaylist } from "@/types";
 import Link from "next/link";
-import { Pin, Search, Loader2, Music, Mic2, Play, ListPlus, RefreshCw, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Pin, Search, Loader2, Music, Mic2, Play, ListPlus, RefreshCw, Sparkles, SlidersHorizontal, UserCircle2 } from "lucide-react";
 import PinnedPlaylistSection from "@/components/home/PinnedPlaylistSection";
 import PersonalizeSheet, { FavoriteArtist } from "@/components/home/PersonalizeSheet";
 import ArtistSheet from "@/components/music/ArtistSheet";
@@ -23,6 +23,13 @@ interface Suggestion {
   id: string;
   uri?: string;
   durationMs?: number;
+}
+
+interface PinnedArtist {
+  id: string;
+  artist_id: string;
+  artist_name: string;
+  artist_image: string;
 }
 
 interface FeedSection {
@@ -133,6 +140,7 @@ export default function HomeClient() {
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [modalTrack, setModalTrack] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
+  const [pinnedArtists, setPinnedArtists] = useState<PinnedArtist[]>([]);
 
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -145,7 +153,8 @@ export default function HomeClient() {
     Promise.all([
       fetch("/api/preferences").then((r) => r.json()).catch(() => ({ languages: [], favoriteArtists: [] })),
       fetch("/api/pinned").then((r) => r.json()).catch(() => []),
-    ]).then(([prefsData, pinnedData]) => {
+      fetch("/api/pinned-artists").then((r) => r.json()).catch(() => []),
+    ]).then(([prefsData, pinnedData, pinnedArtistsData]) => {
       const newLangs: string[] = prefsData.languages ?? [];
       const newArtists: FavoriteArtist[] = prefsData.favoriteArtists ?? [];
       const newPinned: PinnedPlaylist[] = Array.isArray(pinnedData) ? pinnedData : [];
@@ -154,6 +163,7 @@ export default function HomeClient() {
       setPrefsChecked(true);
       setPinned(newPinned);
       setPinnedLoading(false);
+      setPinnedArtists(Array.isArray(pinnedArtistsData) ? pinnedArtistsData : []);
       homeCache = { langs: newLangs, favoriteArtists: newArtists, pinned: newPinned, feedSections: homeCache?.feedSections ?? [], forYouTracks: homeCache?.forYouTracks ?? [], ts: homeCache?.ts ?? 0 };
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -212,6 +222,18 @@ export default function HomeClient() {
     if (favoriteArtists.length > 0 && !hasFreshCache) fetchForYou(favoriteArtists);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [favoriteArtists, fetchForYou]);
+
+  // Sync pinned artists when ArtistSheet fires the event
+  useEffect(() => {
+    const handler = () => {
+      fetch("/api/pinned-artists")
+        .then((r) => r.json())
+        .then((data) => { if (Array.isArray(data)) setPinnedArtists(data); })
+        .catch(() => {});
+    };
+    window.addEventListener("pinned-artists-updated", handler);
+    return () => window.removeEventListener("pinned-artists-updated", handler);
+  }, []);
 
   // Refresh everything
   const handleRefresh = () => {
@@ -405,6 +427,37 @@ export default function HomeClient() {
           </div>
         )}
       </div>
+
+      {/* Pinned Artists */}
+      {pinnedArtists.length > 0 && (
+        <section className="space-y-3">
+          <h3 className="text-white font-bold text-base flex items-center gap-2">
+            <UserCircle2 size={14} className="text-[#E8282B]" /> Pinned Artists
+          </h3>
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+            {pinnedArtists.map((pa) => (
+              <button
+                key={pa.id}
+                onClick={() => setSelectedArtist({ id: pa.artist_id, name: pa.artist_name, images: pa.artist_image ? [{ url: pa.artist_image }] : [], followers: { total: 0 }, genres: [], external_urls: { spotify: "" }, popularity: 0, type: "artist", uri: "" } as SpotifyArtist)}
+                className="flex flex-col items-center gap-1.5 shrink-0 group"
+                style={{ width: 72 }}
+              >
+                <div className="relative w-16 h-16 rounded-full overflow-hidden bg-white/[0.06] ring-2 ring-white/[0.05] group-hover:ring-[#E8282B]/40 transition-all">
+                  {pa.artist_image ? (
+                    <Image src={pa.artist_image} alt={pa.artist_name} fill unoptimized sizes="64px" className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Mic2 size={18} className="text-white/20" />
+                    </div>
+                  )}
+                  <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
+                </div>
+                <p className="text-[10px] text-white/45 group-hover:text-white transition-colors text-center truncate w-full leading-tight">{pa.artist_name}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Pinned */}
       <section className="space-y-3">

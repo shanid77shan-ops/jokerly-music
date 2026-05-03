@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SpotifyArtist, SpotifyTrack, artistImage, trackImage, artistNames } from "@/types/spotify";
-import { X, Loader2, ExternalLink, Music, Play, Pause, ListPlus } from "lucide-react";
+import { X, Loader2, ExternalLink, Music, Play, Pause, ListPlus, Pin } from "lucide-react";
 import Image from "next/image";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
@@ -28,7 +28,18 @@ export default function ArtistSheet({ artist, onClose }: Props) {
   const [moreTracks, setMoreTracks] = useState<SpotifyTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [addModal, setAddModal] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
+  const [isPinned, setIsPinned] = useState(false);
+  const [pinning, setPinning] = useState(false);
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
+
+  useEffect(() => {
+    fetch("/api/pinned-artists")
+      .then((r) => r.json())
+      .then((data: { artist_id: string }[]) => {
+        setIsPinned(Array.isArray(data) && data.some((a) => a.artist_id === artist.id));
+      })
+      .catch(() => {});
+  }, [artist.id]);
 
   useEffect(() => {
     fetch(`/api/spotify/artist?id=${encodeURIComponent(artist.id)}&name=${encodeURIComponent(artist.name)}`)
@@ -45,6 +56,37 @@ export default function ArtistSheet({ artist, onClose }: Props) {
   const allTracks = [...topTracks, ...moreTracks];
   const displayArtist = info ?? artist;
   const image = artistImage(displayArtist);
+
+  const togglePin = async () => {
+    setPinning(true);
+    try {
+      if (isPinned) {
+        await fetch("/api/pinned-artists", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ artist_id: displayArtist.id }),
+        });
+        setIsPinned(false);
+        window.dispatchEvent(new CustomEvent("pinned-artists-updated"));
+      } else {
+        await fetch("/api/pinned-artists", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            artist_id: displayArtist.id,
+            artist_name: displayArtist.name,
+            artist_image: image ?? "",
+          }),
+        });
+        setIsPinned(true);
+        window.dispatchEvent(new CustomEvent("pinned-artists-updated"));
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setPinning(false);
+    }
+  };
 
   const handlePlay = (track: SpotifyTrack) => {
     const index = allTracks.findIndex((t) => t.id === track.id);
@@ -76,7 +118,7 @@ export default function ArtistSheet({ artist, onClose }: Props) {
               </div>
             )}
 
-            {/* Close + external */}
+            {/* Close + external + pin */}
             <div className="absolute top-3 right-3 flex items-center gap-1">
               <a
                 href={displayArtist.external_urls?.spotify}
@@ -88,6 +130,18 @@ export default function ArtistSheet({ artist, onClose }: Props) {
               >
                 <ExternalLink size={15} />
               </a>
+              <button
+                onClick={togglePin}
+                disabled={pinning}
+                title={isPinned ? "Unpin artist" : "Pin to home"}
+                className="p-2 rounded-xl transition-colors disabled:opacity-50"
+                style={{
+                  background: isPinned ? "rgba(232,40,43,0.55)" : "rgba(0,0,0,0.45)",
+                  color: isPinned ? "#fff" : "rgba(255,255,255,0.6)",
+                }}
+              >
+                {pinning ? <Loader2 size={15} className="animate-spin" /> : <Pin size={15} />}
+              </button>
               <button
                 onClick={onClose}
                 className="p-2 rounded-xl text-white/60 hover:text-white transition-colors"
