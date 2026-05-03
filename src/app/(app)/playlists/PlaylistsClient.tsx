@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2, Music, Play, Trash, PlayCircle, GripVertical, ListPlus, ArrowLeft, FolderInput } from "lucide-react";
+import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2, Music, Play, Trash, PlayCircle, GripVertical, ListPlus, ArrowLeft, FolderInput, UserCircle2, Mic2 } from "lucide-react";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
   useSensor, useSensors, DragEndEvent,
@@ -17,10 +17,13 @@ import { useToastStore } from "@/store/toast";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import AddFromPlaylistModal from "@/components/playlist/AddFromPlaylistModal";
+import ArtistSheet from "@/components/music/ArtistSheet";
+import { SpotifyArtist } from "@/types/spotify";
 
 interface EditState { id: string; name: string; description: string; }
 interface PinnedRow { playlist_id: string; }
 interface PlaylistTrack { id: string; track_uri: string; track_name: string; track_image?: string | null; track_artist?: string | null; added_at: string; position: number; }
+interface PinnedArtist { id: string; artist_id: string; artist_name: string; artist_image: string; }
 
 // ── Sortable track row ──────────────────────────────────────────────────────
 function SortableTrackRow({
@@ -141,6 +144,8 @@ export default function PlaylistsClient() {
   const [removingTrack, setRemovingTrack] = useState<string | null>(null);
   const [addModal, setAddModal] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [addFromPlaylist, setAddFromPlaylist] = useState(false);
+  const [pinnedArtists, setPinnedArtists] = useState<PinnedArtist[]>([]);
+  const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
   const { toast } = useToastStore();
   const { setQueueAndPlay } = usePlayerStore();
 
@@ -187,6 +192,14 @@ export default function PlaylistsClient() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const fetchPinnedArtists = () =>
+      fetch("/api/pinned-artists").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setPinnedArtists(d); }).catch(() => {});
+    fetchPinnedArtists();
+    window.addEventListener("pinned-artists-updated", fetchPinnedArtists);
+    return () => window.removeEventListener("pinned-artists-updated", fetchPinnedArtists);
+  }, []);
 
   useEffect(() => {
     if (playlists.length === 0) return;
@@ -563,7 +576,39 @@ export default function PlaylistsClient() {
         </div>
       )}
 
+      {/* Pinned Artists */}
+      {pinnedArtists.length > 0 && (
+        <section className="space-y-3">
+          <h3 className="text-white font-bold text-base flex items-center gap-2">
+            <UserCircle2 size={14} className="text-[#E8282B]" /> Pinned Artists
+          </h3>
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+            {pinnedArtists.map((pa) => (
+              <button
+                key={pa.id}
+                onClick={() => setSelectedArtist({ id: pa.artist_id, name: pa.artist_name, images: pa.artist_image ? [{ url: pa.artist_image }] : [], followers: { total: 0 }, genres: [], external_urls: { spotify: "" }, popularity: 0, type: "artist", uri: "" } as SpotifyArtist)}
+                className="flex flex-col items-center gap-1.5 shrink-0 group"
+                style={{ width: 72 }}
+              >
+                <div className="relative w-16 h-16 rounded-full overflow-hidden bg-white/[0.06] ring-2 ring-white/[0.05] group-hover:ring-[#E8282B]/40 transition-all">
+                  {pa.artist_image ? (
+                    <Image src={pa.artist_image} alt={pa.artist_name} fill unoptimized sizes="64px" className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Mic2 size={18} className="text-white/20" />
+                    </div>
+                  )}
+                  <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
+                </div>
+                <p className="text-[10px] text-white/45 group-hover:text-white transition-colors text-center truncate w-full leading-tight">{pa.artist_name}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {addModal && <AddToPlaylistModal track={addModal} onClose={() => setAddModal(null)} />}
+      {selectedArtist && <ArtistSheet artist={selectedArtist} onClose={() => setSelectedArtist(null)} />}
     </div>
   );
 }

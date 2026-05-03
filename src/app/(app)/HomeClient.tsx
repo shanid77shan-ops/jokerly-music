@@ -147,14 +147,21 @@ export default function HomeClient() {
   const suggestBoxRef = useRef<HTMLDivElement>(null);
   const { setQueueAndPlay } = usePlayerStore();
 
+  // Always fetch pinned artists on mount — not gated by cache
+  useEffect(() => {
+    fetch("/api/pinned-artists")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setPinnedArtists(data); })
+      .catch(() => {});
+  }, []);
+
   // Initial load
   useEffect(() => {
     if (hasFreshCache) return;
     Promise.all([
       fetch("/api/preferences").then((r) => r.json()).catch(() => ({ languages: [], favoriteArtists: [] })),
       fetch("/api/pinned").then((r) => r.json()).catch(() => []),
-      fetch("/api/pinned-artists").then((r) => r.json()).catch(() => []),
-    ]).then(([prefsData, pinnedData, pinnedArtistsData]) => {
+    ]).then(([prefsData, pinnedData]) => {
       const newLangs: string[] = prefsData.languages ?? [];
       const newArtists: FavoriteArtist[] = prefsData.favoriteArtists ?? [];
       const newPinned: PinnedPlaylist[] = Array.isArray(pinnedData) ? pinnedData : [];
@@ -163,7 +170,6 @@ export default function HomeClient() {
       setPrefsChecked(true);
       setPinned(newPinned);
       setPinnedLoading(false);
-      setPinnedArtists(Array.isArray(pinnedArtistsData) ? pinnedArtistsData : []);
       homeCache = { langs: newLangs, favoriteArtists: newArtists, pinned: newPinned, feedSections: homeCache?.feedSections ?? [], forYouTracks: homeCache?.forYouTracks ?? [], ts: homeCache?.ts ?? 0 };
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -428,6 +434,17 @@ export default function HomeClient() {
         )}
       </div>
 
+      {/* Pinned Playlists */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-white font-bold text-base flex items-center gap-2">
+            <Pin size={14} className="text-[#E8282B]" /> Pinned
+          </h3>
+          <Link href="/pinned" className="text-xs text-white/30 hover:text-white transition-colors">View all</Link>
+        </div>
+        {pinnedLoading ? <PinnedSkeleton /> : <PinnedPlaylistSection pinned={pinned} />}
+      </section>
+
       {/* Pinned Artists */}
       {pinnedArtists.length > 0 && (
         <section className="space-y-3">
@@ -458,17 +475,6 @@ export default function HomeClient() {
           </div>
         </section>
       )}
-
-      {/* Pinned */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-white font-bold text-base flex items-center gap-2">
-            <Pin size={14} className="text-[#E8282B]" /> Pinned
-          </h3>
-          <Link href="/pinned" className="text-xs text-white/30 hover:text-white transition-colors">View all</Link>
-        </div>
-        {pinnedLoading ? <PinnedSkeleton /> : <PinnedPlaylistSection pinned={pinned} />}
-      </section>
 
       {/* Action buttons */}
       {langs && langs.length > 0 && (
