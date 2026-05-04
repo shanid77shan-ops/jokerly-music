@@ -4,20 +4,18 @@ import Image from "next/image";
 
 interface Props {
   album: SpotifyAlbum;
+  onSelect?: (album: SpotifyAlbum) => void;
 }
 
-export default function SpotifyAlbumCard({ album }: Props) {
+export default function SpotifyAlbumCard({ album, onSelect }: Props) {
   const image = albumImage(album);
   const artists = album.artists.map((a) => a.name).join(", ");
 
-  return (
-    <a
-      href={album.external_urls.spotify}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex flex-col gap-2.5 p-3 rounded-2xl border hover:scale-[1.02] transition-all duration-200 group"
-      style={{ background: "var(--card)", borderColor: "var(--border)" }}
-    >
+  const cls = "flex flex-col gap-2.5 p-3 rounded-2xl border hover:scale-[1.02] transition-all duration-200 group text-left w-full";
+  const style = { background: "var(--card)", borderColor: "var(--border)" };
+
+  const inner = (
+    <>
       <div className="relative w-full aspect-square">
         {image ? (
           <Image src={image} alt={album.name} fill unoptimized className="rounded-xl object-cover shadow-lg shadow-black/40" sizes="160px" />
@@ -36,6 +34,20 @@ export default function SpotifyAlbumCard({ album }: Props) {
           {album.album_type} · {album.release_date?.slice(0, 4)}
         </p>
       </div>
+    </>
+  );
+
+  if (onSelect) {
+    return (
+      <button type="button" onClick={() => onSelect(album)} className={cls} style={style}>
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <a href={album.external_urls.spotify} target="_blank" rel="noopener noreferrer" className={cls} style={style}>
+      {inner}
     </a>
   );
 }

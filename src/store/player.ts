@@ -30,9 +30,13 @@ interface PlayerState {
   volume: number;
   endedToken: number;
   isPlayerExpanded: boolean;
+  isQueueOpen: boolean;
+  sleepTimerEndsAt: number | null;
 
   initializePlayer: (accessToken: string) => Promise<void>;
   setVolume: (volume: number) => Promise<void>;
+  removeFromQueue: (index: number) => void;
+  setSleepTimer: (minutes: number | null) => void;
   setQueueAndPlay: (tracks: PlayableTrack[], index: number) => Promise<void>;
   updateTrackUri: (index: number, uri: string | null, imageUrl?: string | null, durationMs?: number) => void;
   playIndex: (index: number) => void;
@@ -87,6 +91,7 @@ function getSpotifyCtor(): SpotifyPlayerCtor | null {
 // Spotify emits short-lived paused states during track switches.
 // Keep UI stable for a brief window right after a play request.
 let ignorePausedUntil = 0;
+let lastLoggedUri = "";
 
 async function loadSpotifySdk(): Promise<SpotifyPlayerCtor | null> {
   const existing = getSpotifyCtor();
@@ -158,6 +163,20 @@ function hydrateFromSdkState(state: SpotifyPlayerState | null) {
     progressMs: state.position,
     durationMs: state.duration,
   });
+
+  if (!state.paused && currentTrack?.uri && currentTrack.uri !== lastLoggedUri) {
+    lastLoggedUri = currentTrack.uri;
+    fetch("/api/recently-played", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        track_uri: currentTrack.uri,
+        track_name: currentTrack.name,
+        track_artist: currentTrack.artist,
+        track_image: currentTrack.image ?? null,
+      }),
+    }).catch(() => {});
+  }
 }
 
 async function spotifyApi(path: string, accessToken: string, options: RequestInit = {}) {
@@ -208,6 +227,8 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
   volume: 0.8,
   endedToken: 0,
   isPlayerExpanded: false,
+  isQueueOpen: false,
+  sleepTimerEndsAt: null,
 
   initializePlayer: async (accessToken) => {
     set({ accessToken, sdkError: null });
@@ -436,6 +457,24 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     if (player) await player.setVolume(clamped).catch(() => {});
   },
 
+  removeFromQueue: (index) => {
+    const { queue, queueIndex } = get();
+    const updated = queue.filter((_, i) => i !== index);
+    const newIndex =
+      index < queueIndex ? queueIndex - 1
+      : index === queueIndex ? Math.min(queueIndex, updated.length - 1)
+      : queueIndex;
+    set({ queue: updated, queueIndex: Math.max(0, newIndex) });
+  },
+
+  setSleepTimer: (minutes) => {
+    if (minutes === null) {
+      set({ sleepTimerEndsAt: null });
+    } else {
+      set({ sleepTimerEndsAt: Date.now() + minutes * 60_000 });
+    }
+  },
+
   getNextIndex: () => {
     const { queue, queueIndex, repeatMode, shuffleEnabled } = get();
     if (queue.length === 0 || queueIndex < 0) return null;
@@ -495,6 +534,8 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     shuffleEnabled: state.shuffleEnabled,
     volume: state.volume,
     isPlayerExpanded: false,
+    isQueueOpen: false,
+    sleepTimerEndsAt: null,
     endedToken: 0,
     isPlayerReady: false,
     sdkError: null,
@@ -513,5 +554,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     getNextIndex: state.getNextIndex,
     getPrevIndex: state.getPrevIndex,
     setVolume: state.setVolume,
+    removeFromQueue: state.removeFromQueue,
+    setSleepTimer: state.setSleepTimer,
   }),
 }));
