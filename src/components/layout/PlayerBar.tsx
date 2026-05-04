@@ -2,7 +2,8 @@
 
 import { useEffect, useCallback, useState, useRef } from "react";
 import { usePlayerStore } from "@/store/player";
-import { Play, Pause, SkipBack, SkipForward, X, Music, Repeat, Repeat1, Shuffle, ChevronDown, ListPlus, Loader2 } from "lucide-react";
+import { useLikesStore } from "@/store/likes";
+import { Play, Pause, SkipBack, SkipForward, X, Music, Repeat, Repeat1, Shuffle, ChevronDown, ListPlus, Loader2, Heart } from "lucide-react";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
@@ -46,6 +47,14 @@ export default function PlayerBar() {
     getPrevIndex,
   } = usePlayerStore();
 
+  const { load: loadLikes, songUris, toggleSong } = useLikesStore();
+  const isLiked = currentTrack?.uri ? songUris.has(currentTrack.uri) : false;
+
+  const handleLike = () => {
+    if (!currentTrack?.uri) return;
+    toggleSong({ uri: currentTrack.uri, name: currentTrack.name, image: currentTrack.image, artist: currentTrack.artist });
+  };
+
   const [fetching, setFetching] = useState(false);
   const [modalTrack, setModalTrack] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [resolvingAdd, setResolvingAdd] = useState(false);
@@ -77,6 +86,8 @@ export default function PlayerBar() {
       setResolvingAdd(false);
     }
   }, [currentTrack]);
+
+  useEffect(() => { loadLikes(); }, [loadLikes]);
 
   useEffect(() => {
     if (!session?.accessToken) return;
@@ -330,7 +341,11 @@ export default function PlayerBar() {
                     <RepeatIcon size={18} />
                   </button>
                   </div>
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <button onClick={handleLike} title={isLiked ? "Unlike" : "Like"}
+                      className={`shrink-0 p-2.5 rounded-2xl transition-colors ${isLiked ? "text-[#E8282B] bg-[#E8282B]/10" : "text-white/30 hover:text-[#E8282B] hover:bg-[#E8282B]/10"}`}>
+                      <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
+                    </button>
                     <button onClick={handleAddToPlaylist} disabled={resolvingAdd} title="Add to playlist"
                       className="shrink-0 p-2.5 rounded-2xl text-white/30 hover:text-[#E8282B] hover:bg-[#E8282B]/10 transition-colors disabled:opacity-40">
                       {resolvingAdd ? <Loader2 size={18} className="animate-spin" /> : <ListPlus size={18} />}
@@ -403,6 +418,10 @@ export default function PlayerBar() {
             <button onClick={cycleRepeatMode} title={repeatMode === "one" ? "Repeat one" : repeatMode === "all" ? "Repeat all" : "Repeat off"}
               className={`p-2 rounded-xl transition-colors ${repeatMode !== "off" ? "text-[#E8282B]" : "text-white/30 hover:text-white"}`}>
               <RepeatIcon size={16} />
+            </button>
+            <button onClick={handleLike} title={isLiked ? "Unlike" : "Like"}
+              className={`p-2 rounded-xl transition-colors ${isLiked ? "text-[#E8282B]" : "text-white/30 hover:text-[#E8282B]"}`}>
+              <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
             </button>
             <button onClick={handleAddToPlaylist} disabled={resolvingAdd} title="Add to playlist"
               className="p-2 rounded-xl text-[#E8282B]/50 hover:text-[#E8282B] hover:bg-[#E8282B]/10 transition-colors disabled:opacity-30">
