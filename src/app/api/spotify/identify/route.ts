@@ -7,8 +7,17 @@ import { join } from "path";
 import { promises as fs } from "fs";
 import { execFile } from "child_process";
 import { promisify } from "util";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg") as { path: string };
 
 const execFileAsync = promisify(execFile);
+
+// On Vercel (Linux) use the bundled static binary; elsewhere fall back to PATH.
+const FFMPEG_PATH = ffmpegInstaller.path;
+const FPCALC_PATH =
+  process.platform === "linux"
+    ? join(process.cwd(), "bin", "fpcalc")
+    : "fpcalc";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -35,8 +44,8 @@ interface AcoustIdResponse {
 async function computeFingerprint(audioPath: string) {
   const wavPath = join(tmpdir(), `${randomUUID()}.wav`);
   try {
-    await execFileAsync("ffmpeg", ["-y", "-i", audioPath, "-ac", "1", "-ar", "11025", wavPath]);
-    const { stdout } = await execFileAsync("fpcalc", ["-json", wavPath]);
+    await execFileAsync(FFMPEG_PATH, ["-y", "-i", audioPath, "-ac", "1", "-ar", "11025", wavPath]);
+    const { stdout } = await execFileAsync(FPCALC_PATH, ["-json", wavPath]);
     const parsed = JSON.parse(stdout) as { duration?: number; fingerprint?: string };
     if (!parsed.duration || !parsed.fingerprint) {
       throw new Error("Could not generate fingerprint");

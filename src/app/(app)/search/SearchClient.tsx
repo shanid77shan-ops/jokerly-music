@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, Loader2, Music, Mic2, Play, ListPlus, AlertCircle, RefreshCw, LogOut, ArrowLeft, Heart } from "lucide-react";
+import { Search, Loader2, Music, Mic2, Play, ListPlus, AlertCircle, RefreshCw, LogOut, ArrowLeft, Heart, X } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import SpotifyTrackCard from "@/components/music/SpotifyTrackCard";
@@ -508,37 +508,50 @@ export default function SearchClient() {
         )}
       </div>
 
-      {/* Search error banner */}
+      {/* Identify status / result banner */}
       {(identifyError || listening || identifying || identifiedMatch) && (
         <div className="rounded-2xl border border-zinc-700 bg-zinc-900/70 p-4 flex flex-col gap-2">
-          {listening && <p className="text-sm text-zinc-200">Listening... hold your phone near the music source.</p>}
-          {identifying && <p className="text-sm text-zinc-200">Identifying song...</p>}
-          {identifyError && <p className="text-sm text-red-400">{identifyError}</p>}
-          {identifiedMatch && (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-semibold truncate">{identifiedMatch.title}</p>
-                <p className="text-zinc-400 text-xs truncate">{identifiedMatch.artist}</p>
-              </div>
-              {identifiedMatch.uri && (
-                <button
-                  onClick={() => {
-                    const playable: PlayableTrack = {
-                      name: identifiedMatch.title,
-                      artist: identifiedMatch.artist,
-                      image: identifiedMatch.imageUrl ?? undefined,
-                      uri: identifiedMatch.uri,
-                      durationMs: identifiedMatch.durationMs ?? undefined,
-                    };
-                    setQueueAndPlay([playable], 0);
-                  }}
-                  className="bg-red-500 hover:bg-red-400 text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  Play
-                </button>
+          <div className="flex items-start gap-2">
+            <div className="flex-1 flex flex-col gap-2">
+              {listening && <p className="text-sm text-zinc-200">Listening… hold your phone near the music source.</p>}
+              {identifying && <p className="text-sm text-zinc-200">Identifying song…</p>}
+              {identifyError && <p className="text-sm text-red-400">{identifyError}</p>}
+              {identifiedMatch && (
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-semibold truncate">{identifiedMatch.title}</p>
+                    <p className="text-zinc-400 text-xs truncate">{identifiedMatch.artist}</p>
+                  </div>
+                  {identifiedMatch.uri && (
+                    <button
+                      onClick={() => {
+                        const playable: PlayableTrack = {
+                          name: identifiedMatch.title,
+                          artist: identifiedMatch.artist,
+                          image: identifiedMatch.imageUrl ?? undefined,
+                          uri: identifiedMatch.uri,
+                          durationMs: identifiedMatch.durationMs ?? undefined,
+                        };
+                        setQueueAndPlay([playable], 0);
+                      }}
+                      className="bg-red-500 hover:bg-red-400 text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Play
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-          )}
+            {!listening && !identifying && (
+              <button
+                onClick={() => { setIdentifiedMatch(null); setIdentifyError(null); }}
+                className="shrink-0 p-1 rounded-lg text-zinc-500 hover:text-zinc-300 transition-colors"
+                title="Dismiss"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
