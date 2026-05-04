@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2, Music, Play, Trash, PlayCircle, GripVertical, ListPlus, ArrowLeft, FolderInput, UserCircle2, Mic2 } from "lucide-react";
+import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2, Music, Play, Trash, PlayCircle, GripVertical, ListPlus, ArrowLeft, FolderInput, UserCircle2, Mic2, Heart } from "lucide-react";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
   useSensor, useSensors, DragEndEvent,
