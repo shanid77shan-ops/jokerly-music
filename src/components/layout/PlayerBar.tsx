@@ -126,16 +126,75 @@ export default function PlayerBar() {
 
   // Advance progress locally every 500 ms while playing so the bar moves
   // smoothly between infrequent SDK state-change events.
+  // Also keeps MediaSession position state in sync for the OS seek bar.
   useEffect(() => {
     if (!isPlaying || durationMs <= 0) return;
     const id = setInterval(() => {
       usePlayerStore.setState((s) => {
         if (!s.isPlaying || s.durationMs <= 0) return s;
-        return { progressMs: Math.min(s.progressMs + 500, s.durationMs) };
+        const next = Math.min(s.progressMs + 500, s.durationMs);
+        if (typeof navigator !== "undefined" && "mediaSession" in navigator && "setPositionState" in navigator.mediaSession) {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: s.durationMs / 1000,
+              playbackRate: 1,
+              position: next / 1000,
+            });
+          } catch {}
+        }
+        return { progressMs: next };
       });
     }, 500);
     return () => clearInterval(id);
   }, [isPlaying, durationMs]);
+
+  // Media Session API — drives the OS lock-screen / notification player
+  // with track metadata, artwork, and prev/next/play/pause/seek actions.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    if (!currentTrack) {
+      navigator.mediaSession.metadata = null;
+      return;
+    }
+    const artwork = currentTrack.image
+      ? [{ src: currentTrack.image, sizes: "512x512", type: "image/jpeg" }]
+      : [];
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentTrack.name,
+      artist: currentTrack.artist,
+      artwork,
+    });
+  }, [currentTrack]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    navigator.mediaSession.setActionHandler("play", () => togglePlay());
+    navigator.mediaSession.setActionHandler("pause", () => togglePlay());
+    navigator.mediaSession.setActionHandler("previoustrack", () => {
+      const prev = usePlayerStore.getState().getPrevIndex();
+      if (prev !== null) fetchAndPlay(prev);
+    });
+    navigator.mediaSession.setActionHandler("nexttrack", () => {
+      const next = usePlayerStore.getState().getNextIndex();
+      if (next !== null) fetchAndPlay(next);
+    });
+    navigator.mediaSession.setActionHandler("seekto", (details) => {
+      if (details.seekTime != null) {
+        const { durationMs: dur } = usePlayerStore.getState();
+        if (dur > 0) usePlayerStore.getState().seek(details.seekTime / (dur / 1000));
+      }
+    });
+    return () => {
+      (["play", "pause", "previoustrack", "nexttrack", "seekto"] as MediaSessionAction[]).forEach((a) => {
+        try { navigator.mediaSession.setActionHandler(a, null); } catch {}
+      });
+    };
+  }, [togglePlay, fetchAndPlay]);
 
   if (sdkError && !currentTrack) {
     return (
