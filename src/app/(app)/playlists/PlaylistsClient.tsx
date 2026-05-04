@@ -19,6 +19,7 @@ import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import AddFromPlaylistModal from "@/components/playlist/AddFromPlaylistModal";
 import ArtistSheet from "@/components/music/ArtistSheet";
 import { SpotifyArtist } from "@/types/spotify";
+import { useLikesStore } from "@/store/likes";
 
 interface EditState { id: string; name: string; description: string; }
 interface PinnedRow { playlist_id: string; }
@@ -37,6 +38,9 @@ function SortableTrackRow({
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isCurrentlyPlaying = isPlaying && !!currentTrack?.uri && currentTrack.uri === track.track_uri;
+  const { load: loadLikes, songUris, toggleSong } = useLikesStore();
+  const isLiked = songUris.has(track.track_uri);
+  useEffect(() => { loadLikes(); }, [loadLikes]);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -87,6 +91,13 @@ function SortableTrackRow({
       <button onClick={(e) => { e.stopPropagation(); onAddToPlaylist(); }}
         className="shrink-0 p-1.5 rounded-lg transition-all text-[#E8282B]/50 hover:text-[#E8282B] hover:bg-[#E8282B]/10 sm:opacity-0 sm:group-hover:opacity-100">
         <ListPlus size={13} />
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); toggleSong({ uri: track.track_uri, name: track.track_name, image: track.track_image ?? null, artist: track.track_artist ?? null }); }}
+        title={isLiked ? "Unlike" : "Like"}
+        className={`shrink-0 p-1.5 rounded-lg transition-all ${isLiked ? "text-[#E8282B]" : "text-white/25 hover:text-[#E8282B] hover:bg-[#E8282B]/10 sm:opacity-0 sm:group-hover:opacity-100"}`}
+      >
+        <Heart size={12} fill={isLiked ? "currentColor" : "none"} />
       </button>
       <button onClick={(e) => { e.stopPropagation(); onRemove(); }}
         disabled={removingKey === rmKey}
