@@ -124,6 +124,19 @@ export default function PlayerBar() {
     fetchAndPlay(nextIndex);
   }, [endedToken, fetchAndPlay, getNextIndex]);
 
+  // Advance progress locally every 500 ms while playing so the bar moves
+  // smoothly between infrequent SDK state-change events.
+  useEffect(() => {
+    if (!isPlaying || durationMs <= 0) return;
+    const id = setInterval(() => {
+      usePlayerStore.setState((s) => {
+        if (!s.isPlaying || s.durationMs <= 0) return s;
+        return { progressMs: Math.min(s.progressMs + 500, s.durationMs) };
+      });
+    }, 500);
+    return () => clearInterval(id);
+  }, [isPlaying, durationMs]);
+
   if (sdkError && !currentTrack) {
     return (
       <div className="fixed bottom-16 sm:bottom-0 left-0 right-0 z-40 border-t border-white/[0.07] px-4 py-3 flex items-center justify-between gap-3"

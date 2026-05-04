@@ -283,10 +283,7 @@ export default function PlaylistsClient() {
 
       setPlaylists((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
       setTracksMap((prev) => ({ ...prev, [created.id]: prev[created.id] ?? [] }));
-
       setNewName(""); setNewDesc(""); setCreating(false);
-      // Keep server-derived fields in sync without blocking immediate UI update.
-      void load();
     } catch (e) {
       toast((e as Error).message ?? "Could not create playlist");
     } finally {
@@ -303,8 +300,11 @@ export default function PlaylistsClient() {
         body: JSON.stringify({ name: edit.name, description: edit.description }),
       });
       if (!res.ok) throw new Error("Failed to save changes");
+      // Update in place — no full reload needed, no skeleton flash.
+      setPlaylists((prev) => prev.map((p) =>
+        p.id === edit.id ? { ...p, name: edit.name, description: edit.description } : p
+      ));
       setEdit(null);
-      await load();
     } catch (e) {
       toast((e as Error).message ?? "Could not save playlist");
     } finally {

@@ -126,15 +126,10 @@ function hydrateFromSdkState(state: SpotifyPlayerState | null) {
   const sdkTrack = state.track_window.current_track;
   const prev = usePlayerStore.getState();
 
+  // Only suppress the transient paused+position=0 state that fires right after a playIndex call.
+  // The ignorePausedUntil window is set in playIndex; outside that window always trust the SDK.
   if (state.paused && state.position === 0 && Date.now() < ignorePausedUntil) {
     return;
-  }
-
-  // Spotify SDK can emit a transient paused+position=0 state during navigation/device churn.
-  // If we were actively playing the same track and were not near the end, ignore it.
-  if (state.paused && state.position === 0 && prev.isPlaying && prev.currentTrack?.uri === sdkTrack.uri) {
-    const nearEnd = prev.durationMs > 0 && prev.progressMs >= Math.max(0, prev.durationMs - 1500);
-    if (!nearEnd) return;
   }
 
   const { queue } = usePlayerStore.getState();
