@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, ListMusic, Sparkles, Pin } from "lucide-react";
+import { Home, Search, ListMusic, Sparkles, Pin, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -10,6 +10,7 @@ const nav = [
   { href: "/search", icon: Search, label: "Search" },
   { href: "/recommendations", icon: Sparkles, label: "For You" },
   { href: "/playlists", icon: ListMusic, label: "Playlists" },
+  { href: "/liked", icon: Heart, label: "Liked" },
   { href: "/pinned", icon: Pin, label: "Pinned" },
 ];
 

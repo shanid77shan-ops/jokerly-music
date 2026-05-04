@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { SpotifyArtist, SpotifyTrack, artistImage, trackImage, artistNames } from "@/types/spotify";
-import { X, Loader2, ExternalLink, Music, Play, Pause, ListPlus, Pin } from "lucide-react";
+import { X, Loader2, ExternalLink, Music, Play, Pause, ListPlus, Pin, Heart } from "lucide-react";
 import Image from "next/image";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
+import { useLikesStore } from "@/store/likes";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 
 interface Props {
@@ -31,6 +32,12 @@ export default function ArtistSheet({ artist, onClose }: Props) {
   const [isPinned, setIsPinned] = useState(false);
   const [pinning, setPinning] = useState(false);
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
+  const { load: loadLikes, artistIds, toggleArtist } = useLikesStore();
+  const isLiked = artistIds.has(artist.id);
+
+  useEffect(() => {
+    loadLikes();
+  }, [loadLikes]);
 
   useEffect(() => {
     fetch("/api/pinned-artists")
@@ -83,15 +90,19 @@ export default function ArtistSheet({ artist, onClose }: Props) {
         if (res.ok) {
           setIsPinned(true);
           window.dispatchEvent(new CustomEvent("pinned-artists-updated"));
-        } else {
-          console.error("Pin failed:", await res.text());
         }
       }
-    } catch (e) {
-      console.error("Pin error:", e);
     } finally {
       setPinning(false);
     }
+  };
+
+  const handleLikeArtist = () => {
+    toggleArtist({
+      id: displayArtist.id,
+      name: displayArtist.name,
+      image: image ?? null,
+    });
   };
 
   const handlePlay = (track: SpotifyTrack) => {
@@ -124,7 +135,7 @@ export default function ArtistSheet({ artist, onClose }: Props) {
               </div>
             )}
 
-            {/* Close + external + pin */}
+            {/* Close + external + like + pin */}
             <div className="absolute top-3 right-3 flex items-center gap-1">
               <a
                 href={displayArtist.external_urls?.spotify}
@@ -136,6 +147,17 @@ export default function ArtistSheet({ artist, onClose }: Props) {
               >
                 <ExternalLink size={15} />
               </a>
+              <button
+                onClick={handleLikeArtist}
+                title={isLiked ? "Unlike artist" : "Like artist"}
+                className="p-2 rounded-xl transition-colors"
+                style={{
+                  background: isLiked ? "rgba(232,40,43,0.55)" : "rgba(0,0,0,0.45)",
+                  color: isLiked ? "#fff" : "rgba(255,255,255,0.6)",
+                }}
+              >
+                <Heart size={15} fill={isLiked ? "white" : "none"} />
+              </button>
               <button
                 onClick={togglePin}
                 disabled={pinning}
@@ -250,6 +272,16 @@ function TrackRow({ track, rank, isCurrentlyPlaying, onPlay, onAddToPlaylist }: 
 }) {
   const image = trackImage(track);
   const artist = artistNames(track);
+  const { songUris, toggleSong, load: loadLikes } = useLikesStore();
+  const isLiked = songUris.has(track.uri ?? "");
+
+  useEffect(() => { loadLikes(); }, [loadLikes]);
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!track.uri) return;
+    toggleSong({ uri: track.uri, name: track.name, image: trackImage(track), artist: artistNames(track) });
+  };
 
   return (
     <div
@@ -291,6 +323,16 @@ function TrackRow({ track, rank, isCurrentlyPlaying, onPlay, onAddToPlaylist }: 
         </p>
         <p className="text-xs text-white/40 truncate mt-0.5">{artist}</p>
       </div>
+
+      <button
+        onClick={handleLike}
+        title={isLiked ? "Unlike" : "Like"}
+        className={`shrink-0 p-1.5 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100 ${
+          isLiked ? "text-[#E8282B] opacity-100" : "text-white/30 hover:text-[#E8282B] hover:bg-[#E8282B]/10"
+        }`}
+      >
+        <Heart size={13} fill={isLiked ? "currentColor" : "none"} />
+      </button>
 
       <button
         onClick={(e) => { e.stopPropagation(); onAddToPlaylist(); }}

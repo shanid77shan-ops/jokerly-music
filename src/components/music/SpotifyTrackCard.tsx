@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { SpotifyTrack, trackImage, artistNames } from "@/types/spotify";
-import { Music, ExternalLink, Sparkles, Play, Pause, ListPlus } from "lucide-react";
+import { Music, ExternalLink, Sparkles, Play, Pause, ListPlus, Heart } from "lucide-react";
 import Image from "next/image";
+import { useLikesStore } from "@/store/likes";
 
 interface Props {
   track: SpotifyTrack;
@@ -16,10 +18,20 @@ interface Props {
 export default function SpotifyTrackCard({ track, onGetSimilar, onPlay, onAddToPlaylist, isCurrentlyPlaying, rank }: Props) {
   const image = trackImage(track);
   const artist = artistNames(track);
+  const { load: loadLikes, songUris, toggleSong } = useLikesStore();
+  const isLiked = songUris.has(track.uri ?? "");
+
+  useEffect(() => { loadLikes(); }, [loadLikes]);
 
   const handleRowClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("button, a")) return;
     onPlay?.(track);
+  };
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!track.uri) return;
+    toggleSong({ uri: track.uri, name: track.name, image: trackImage(track), artist: artistNames(track) });
   };
 
   return (
@@ -67,6 +79,17 @@ export default function SpotifyTrackCard({ track, onGetSimilar, onPlay, onAddToP
       </div>
 
       <div className="flex items-center gap-0.5 shrink-0">
+        <button
+          onClick={handleLike}
+          title={isLiked ? "Unlike" : "Like"}
+          className={`p-1.5 rounded-lg transition-colors ${
+            isLiked
+              ? "text-[#E8282B]"
+              : "text-white/25 hover:text-[#E8282B] hover:bg-[#E8282B]/10 sm:opacity-0 sm:group-hover:opacity-100"
+          }`}
+        >
+          <Heart size={14} fill={isLiked ? "currentColor" : "none"} />
+        </button>
         {onAddToPlaylist && (
           <button
             onClick={(e) => { e.stopPropagation(); onAddToPlaylist(track); }}
