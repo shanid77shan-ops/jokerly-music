@@ -1,4 +1,5 @@
 {
+  "buildCommand": "sh scripts/download-fpcalc.sh && npm run build",
   "headers": [
     {
       "source": "/manifest.json",
