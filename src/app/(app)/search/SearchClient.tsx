@@ -163,7 +163,7 @@ export default function SearchClient() {
     }
   }, [session?.accessToken]);
 
-  // Primary search — always starts with tracks tab
+  // Primary search — always starts with tracks tab, but preloads artist matches
   const handleSearch = useCallback(async (q = query) => {
     if (!q.trim()) return;
     setSearched(true);
@@ -175,7 +175,10 @@ export default function SearchClient() {
     setTracks([]);
     setArtists([]);
     setAlbums([]);
-    await doFetchType(q, "track");
+    await Promise.all([
+      doFetchType(q, "track"),
+      doFetchType(q, "artist"),
+    ]);
   }, [query, doFetchType]);
 
   useEffect(() => { loadLikes(); }, [loadLikes]);
@@ -192,7 +195,10 @@ export default function SearchClient() {
       setSimilarTracks([]);
       setSearchError(null);
       setTab("track");
-      doFetchType(initialQ, "track").then(() => setSearched(true));
+      Promise.all([
+        doFetchType(initialQ, "track"),
+        doFetchType(initialQ, "artist"),
+      ]).then(() => setSearched(true));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQ]);
@@ -620,10 +626,32 @@ export default function SearchClient() {
 
           {tab === "track" && (
             <div className="space-y-1">
+              {!loadingArtists && artists.length > 0 && (
+                <section className="space-y-3 pb-4">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-white text-sm font-semibold">Matching artists</h3>
+                    <button
+                      onClick={() => handleTabChange("artist")}
+                      className="text-xs text-[#E8282B] hover:text-[#ff6264] transition-colors"
+                    >
+                      View all
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {artists.slice(0, 4).map((artist) => (
+                      <SpotifyArtistCard key={artist.id} artist={artist} onSelect={setSelectedArtist} compact />
+                    ))}
+                  </div>
+                </section>
+              )}
               {loadingTracks ? (
                 <div className="flex justify-center py-10"><Loader2 size={22} className="animate-spin text-zinc-500" /></div>
               ) : tracks.length === 0 ? (
-                <p className="text-zinc-500 text-sm py-8 text-center">No tracks found.</p>
+                artists.length > 0 ? (
+                  <p className="text-zinc-500 text-sm py-8 text-center">No tracks found. Artist matches are shown above.</p>
+                ) : (
+                  <p className="text-zinc-500 text-sm py-8 text-center">No tracks found.</p>
+                )
               ) : (
                 tracks.map((t, i) => (
                   <SpotifyTrackCard key={t.id} track={t} rank={i + 1} onGetSimilar={handleGetSimilar}
