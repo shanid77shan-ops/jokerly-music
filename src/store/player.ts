@@ -38,6 +38,7 @@ interface PlayerState {
   initializePlayer: (accessToken: string) => Promise<void>;
   setVolume: (volume: number) => Promise<void>;
   removeFromQueue: (index: number) => void;
+  reorderQueue: (fromIndex: number, toIndex: number) => void;
   setSleepTimer: (minutes: number | null) => void;
   setQueueAndPlay: (tracks: PlayableTrack[], index: number) => Promise<void>;
   updateTrackUri: (index: number, uri: string | null, imageUrl?: string | null, durationMs?: number) => void;
@@ -493,6 +494,18 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
       : index === queueIndex ? Math.min(queueIndex, updated.length - 1)
       : queueIndex;
     set({ queue: updated, queueIndex: Math.max(0, newIndex) });
+  },
+
+  reorderQueue: (fromIndex, toIndex) => {
+    const { queue, queueIndex } = get();
+    const updated = [...queue];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+    let newQueueIndex = queueIndex;
+    if (fromIndex === queueIndex) newQueueIndex = toIndex;
+    else if (fromIndex < queueIndex && toIndex >= queueIndex) newQueueIndex = queueIndex - 1;
+    else if (fromIndex > queueIndex && toIndex <= queueIndex) newQueueIndex = queueIndex + 1;
+    set({ queue: updated, queueIndex: newQueueIndex });
   },
 
   setSleepTimer: (minutes) => {
