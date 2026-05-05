@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PinnedPlaylist } from "@/types";
 import Link from "next/link";
-import { Pin, Search, Loader2, Music, Mic2, Play, ListPlus, RefreshCw, Sparkles, SlidersHorizontal, UserCircle2 } from "lucide-react";
+import { Pin, Search, Loader2, Music, Mic2, Play, ListPlus, RefreshCw, Sparkles, SlidersHorizontal, UserCircle2, X } from "lucide-react";
 import PinnedPlaylistSection from "@/components/home/PinnedPlaylistSection";
 import PersonalizeSheet, { FavoriteArtist } from "@/components/home/PersonalizeSheet";
 import ArtistSheet from "@/components/music/ArtistSheet";
@@ -39,6 +39,14 @@ interface RecentTrack {
   track_artist: string;
   track_image: string | null;
   played_at: string;
+}
+
+interface IdentifiedMatch {
+  title: string;
+  artist: string;
+  uri: string | null;
+  imageUrl: string | null;
+  durationMs: number | null;
 }
 
 interface FeedSection {
@@ -136,7 +144,7 @@ export default function HomeClient() {
   const [feedSections, setFeedSections] = useState<FeedSection[]>(hasFreshCache ? homeCache!.feedSections : []);
   const [feedLoading, setFeedLoading] = useState(!hasFreshCache);
   const [pinned, setPinned] = useState<PinnedPlaylist[]>(hasFreshCache ? homeCache!.pinned : []);
-  const [pinnedLoading, setPinnedLoading] = useState(!hasFreshCache);
+  const [pinnedLoading, setPinnedLoading] = useState(true);
   const [forYouTracks, setForYouTracks] = useState<SpotifyTrack[]>(hasFreshCache ? homeCache!.forYouTracks : []);
   const [forYouLoading, setForYouLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -152,13 +160,41 @@ export default function HomeClient() {
   const [pinnedArtists, setPinnedArtists] = useState<PinnedArtist[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<RecentTrack[]>([]);
 
+  const [listening, setListening] = useState(false);
+  const [identifying, setIdentifying] = useState(false);
+  const [identifyError, setIdentifyError] = useState<string | null>(null);
+  const [identifiedMatch, setIdentifiedMatch] = useState<IdentifiedMatch | null>(null);
+
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestBoxRef = useRef<HTMLDivElement>(null);
   const { setQueueAndPlay } = usePlayerStore();
 
-  // Always fetch pinned artists + recently played on mount
+  const fetchPinnedPlaylists = useCallback(async () => {
+    setPinnedLoading(true);
+    try {
+      const res = await fetch("/api/pinned", { cache: "no-store" });
+      if (!res.ok) {
+        setPinned([]);
+        return;
+      }
+      const data = await res.json();
+      const safeData = Array.isArray(data) ? data : [];
+      setPinned(safeData);
+      if (homeCache) homeCache.pinned = safeData;
+    } catch {
+      setPinned([]);
+    } finally {
+      setPinnedLoading(false);
+    }
+  }, []);
+
+  // Always fetch pinned playlists, pinned artists + recently played on mount
   useEffect(() => {
+    fetchPinnedPlaylists();
+
     fetch("/api/pinned-artists")
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setPinnedArtists(data); })
@@ -168,25 +204,20 @@ export default function HomeClient() {
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d.data)) setRecentlyPlayed(d.data); })
       .catch(() => {});
-  }, []);
+  }, [fetchPinnedPlaylists]);
 
-  // Initial load
+  // Initial load (prefs only — pinned is always fetched above)
   useEffect(() => {
     if (hasFreshCache) return;
-    Promise.all([
-      fetch("/api/preferences").then((r) => r.json()).catch(() => ({ languages: [], favoriteArtists: [] })),
-      fetch("/api/pinned").then((r) => r.json()).catch(() => []),
-    ]).then(([prefsData, pinnedData]) => {
-      const newLangs: string[] = prefsData.languages ?? [];
-      const newArtists: FavoriteArtist[] = prefsData.favoriteArtists ?? [];
-      const newPinned: PinnedPlaylist[] = Array.isArray(pinnedData) ? pinnedData : [];
-      setLangs(newLangs);
-      setFavoriteArtists(newArtists);
-      setPrefsChecked(true);
-      setPinned(newPinned);
-      setPinnedLoading(false);
-      homeCache = { langs: newLangs, favoriteArtists: newArtists, pinned: newPinned, feedSections: homeCache?.feedSections ?? [], forYouTracks: homeCache?.forYouTracks ?? [], ts: homeCache?.ts ?? 0 };
-    });
+    fetch("/api/preferences").then((r) => r.json()).catch(() => ({ languages: [], favoriteArtists: [] }))
+      .then((prefsData) => {
+        const newLangs: string[] = prefsData.languages ?? [];
+        const newArtists: FavoriteArtist[] = prefsData.favoriteArtists ?? [];
+        setLangs(newLangs);
+        setFavoriteArtists(newArtists);
+        setPrefsChecked(true);
+        homeCache = { langs: newLangs, favoriteArtists: newArtists, pinned: homeCache?.pinned ?? [], feedSections: homeCache?.feedSections ?? [], forYouTracks: homeCache?.forYouTracks ?? [], ts: homeCache?.ts ?? 0 };
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -255,6 +286,15 @@ export default function HomeClient() {
     window.addEventListener("pinned-artists-updated", handler);
     return () => window.removeEventListener("pinned-artists-updated", handler);
   }, []);
+
+  // Sync pinned playlists when playlist page toggles pin state
+  useEffect(() => {
+    const handler = () => {
+      fetchPinnedPlaylists();
+    };
+    window.addEventListener("pinned-playlists-updated", handler);
+    return () => window.removeEventListener("pinned-playlists-updated", handler);
+  }, [fetchPinnedPlaylists]);
 
   // Refresh everything
   const handleRefresh = () => {
@@ -374,6 +414,60 @@ export default function HomeClient() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (recorderRef.current && recorderRef.current.state !== "inactive") recorderRef.current.stop();
+      if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
+    };
+  }, []);
+
+  const handleIdentifySong = async () => {
+    if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setIdentifyError("Microphone is not supported in this browser");
+      return;
+    }
+    if (listening || identifying) return;
+    setIdentifyError(null);
+    setIdentifiedMatch(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const chunks: Blob[] = [];
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (event) => { if (event.data.size > 0) chunks.push(event.data); };
+      recorder.onerror = () => { setListening(false); setIdentifying(false); setIdentifyError("Microphone recording failed"); };
+      recorder.onstop = async () => {
+        try {
+          setListening(false);
+          const audioBlob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+          if (!audioBlob.size) { setIdentifyError("No audio captured"); return; }
+          setIdentifying(true);
+          const form = new FormData();
+          form.append("audio", audioBlob, "clip.webm");
+          const res = await fetch("/api/spotify/identify", { method: "POST", body: form });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) { setIdentifyError(data.error ?? "Could not identify song"); return; }
+          const match = data.match as IdentifiedMatch | undefined;
+          if (!match) { setIdentifyError("No match found"); return; }
+          setIdentifiedMatch(match);
+          setQuery(`${match.title} ${match.artist}`.trim());
+        } finally {
+          setIdentifying(false);
+          if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
+          recorderRef.current = null;
+        }
+      };
+      recorder.start();
+      setListening(true);
+      window.setTimeout(() => { if (recorder.state !== "inactive") recorder.stop(); }, 9000);
+    } catch {
+      setIdentifyError("Microphone permission denied");
+      setListening(false);
+      if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
+    }
+  };
+
   const handleSearch = () => {
     if (!query.trim()) return;
     setShowSuggestions(false);
@@ -399,7 +493,15 @@ export default function HomeClient() {
 
       {/* Search bar */}
       <div className="relative">
-        <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none z-10" />
+        <button
+          type="button"
+          onClick={handleIdentifySong}
+          disabled={listening || identifying}
+          title="Identify song"
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors disabled:opacity-50"
+        >
+          {listening || identifying ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+        </button>
         <input
           ref={inputRef} type="text" value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -473,6 +575,19 @@ export default function HomeClient() {
           </div>
         )}
       </div>
+
+      {(identifyError || listening || identifying || identifiedMatch) && (
+        <div className="rounded-2xl border border-white/[0.08] px-4 py-3" style={{ background: "var(--card)" }}>
+          {listening && <p className="text-sm text-zinc-200">Listening... hold your phone near the music source.</p>}
+          {identifying && <p className="text-sm text-zinc-200">Identifying song...</p>}
+          {identifyError && <p className="text-sm text-red-400">{identifyError}</p>}
+          {identifiedMatch && !identifyError && !listening && !identifying && (
+            <p className="text-sm text-zinc-200">
+              Found: <span className="font-semibold text-white">{identifiedMatch.title}</span> by {identifiedMatch.artist}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Recently Played */}
       {recentlyPlayed.length > 0 && (

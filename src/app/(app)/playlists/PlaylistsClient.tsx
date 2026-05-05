@@ -329,9 +329,11 @@ export default function PlaylistsClient() {
       if (pinned.has(pl.id)) {
         await fetch("/api/pinned", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playlist_id: pl.id }) });
         setPinned((prev) => { const s = new Set(prev); s.delete(pl.id); return s; });
+        window.dispatchEvent(new CustomEvent("pinned-playlists-updated"));
       } else {
         await fetch("/api/pinned", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playlist_id: pl.id, playlist_name: pl.name, playlist_image: pl.images?.[0]?.url ?? "" }) });
         setPinned((prev) => new Set(prev).add(pl.id));
+        window.dispatchEvent(new CustomEvent("pinned-playlists-updated"));
       }
     } catch (e) {
       toast((e as Error).message ?? "Could not update pin");

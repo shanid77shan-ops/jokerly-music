@@ -3,7 +3,7 @@
 import { signOut, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { X, User, Settings, Search } from "lucide-react";
+import { X, User, Settings } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 function SettingsModal({ onClose }: { onClose: () => void }) {
@@ -58,10 +58,9 @@ export default function Topbar() {
   useEffect(() => {
     setMounted(true);
     router.prefetch("/");
-    router.prefetch("/search");
   }, [router]);
 
-  const go = (e: React.PointerEvent<HTMLButtonElement> | React.MouseEvent<HTMLButtonElement>, target: "/" | "/search") => {
+  const go = (e: React.PointerEvent<HTMLButtonElement> | React.MouseEvent<HTMLButtonElement>, target: "/") => {
     e.preventDefault();
     e.stopPropagation();
     if (pathname === target) return;
@@ -95,14 +94,6 @@ export default function Topbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
-            <button type="button"
-              onPointerDown={(e) => go(e, "/search")}
-              onClick={(e) => e.preventDefault()}
-              className={`p-2 rounded-xl transition-colors ${pathname === "/search" ? "text-[#E8282B] bg-[#E8282B]/10" : "text-white/40 hover:text-white hover:bg-white/[0.07]"}`}
-              title="Search">
-              <Search size={17} />
-            </button>
-
             <button onClick={() => setShowSettings(true)}
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-white/[0.07] transition-colors">
               {session?.user?.image ? (
