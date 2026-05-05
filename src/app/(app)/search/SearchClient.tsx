@@ -18,6 +18,7 @@ import Image from "next/image";
 import ListeningWaveform from "@/components/ui/ListeningWaveform";
 
 type Tab = "track" | "artist" | "album";
+type ArtistResultTab = "songs" | "albums" | "profile";
 
 // Per-type cache — tracks/artists/albums stored independently
 const trackCache = new Map<string, SpotifyTrack[]>();
@@ -98,6 +99,9 @@ export default function SearchClient() {
   const [albums, setAlbums] = useState<SpotifyAlbum[]>([]);
   const [matchedArtistAlbums, setMatchedArtistAlbums] = useState<SpotifyAlbum[]>([]);
   const [matchedArtist, setMatchedArtist] = useState<SpotifyArtist | null>(null);
+  const [matchedArtistTracks, setMatchedArtistTracks] = useState<SpotifyTrack[]>([]);
+  const [matchedArtistTab, setMatchedArtistTab] = useState<ArtistResultTab>("songs");
+  const [loadingMatchedArtist, setLoadingMatchedArtist] = useState(false);
 
   const [loadingTracks, setLoadingTracks] = useState(false);
   const [loadingArtists, setLoadingArtists] = useState(false);
@@ -178,6 +182,7 @@ export default function SearchClient() {
     setSimilarTracks([]);
     setSearchError(null);
     setTab("track");
+    setMatchedArtistTab("songs");
     setTracks([]);
     setArtists([]);
     setAlbums([]);
@@ -193,6 +198,8 @@ export default function SearchClient() {
     if (!searched || !query.trim() || artists.length === 0) {
       setMatchedArtist(null);
       setMatchedArtistAlbums([]);
+      setMatchedArtistTracks([]);
+      setLoadingMatchedArtist(false);
       return;
     }
 
@@ -205,21 +212,39 @@ export default function SearchClient() {
     if (!candidate) {
       setMatchedArtist(null);
       setMatchedArtistAlbums([]);
+      setMatchedArtistTracks([]);
+      setLoadingMatchedArtist(false);
       return;
     }
 
     let cancelled = false;
     setMatchedArtist(candidate);
+    setMatchedArtistTab("songs");
+    setLoadingMatchedArtist(true);
 
     fetch(`/api/spotify/artist?id=${encodeURIComponent(candidate.id)}&name=${encodeURIComponent(candidate.name)}`)
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => {
         if (cancelled) return;
         setMatchedArtistAlbums(Array.isArray(data.albums) ? data.albums : []);
+        const topTracks: SpotifyTrack[] = Array.isArray(data.topTracks) ? data.topTracks : [];
+        const moreTracks: SpotifyTrack[] = Array.isArray(data.moreTracks) ? data.moreTracks : [];
+        const seen = new Set<string>();
+        const mergedTracks = [...topTracks, ...moreTracks].filter((track) => {
+          if (!track?.id || seen.has(track.id)) return false;
+          seen.add(track.id);
+          return true;
+        });
+        setMatchedArtistTracks(mergedTracks);
       })
       .catch(() => {
         if (cancelled) return;
         setMatchedArtistAlbums([]);
+        setMatchedArtistTracks([]);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingMatchedArtist(false);
       });
 
     return () => {
@@ -239,6 +264,7 @@ export default function SearchClient() {
       setSimilarTracks([]);
       setSearchError(null);
       setTab("track");
+      setMatchedArtistTab("songs");
       Promise.all([
         doFetchType(initialQ, "track"),
         doFetchType(initialQ, "artist"),
@@ -659,6 +685,65 @@ export default function SearchClient() {
       {/* Full search results */}
       {searched && !searchError && (
         <>
+          {matchedArtist && tab === "track" && (
+            <div className="space-y-3">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                {([
+                  { value: "songs", label: "Songs" },
+                  { value: "albums", label: "Albums" },
+                  { value: "profile", label: "Profile" },
+                ] as const).map((item) => (
+                  <button
+                    key={item.value}
+                    onClick={() => setMatchedArtistTab(item.value)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                      matchedArtistTab === item.value ? "bg-white text-black" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {loadingMatchedArtist ? (
+                <div className="flex justify-center py-8"><Loader2 size={22} className="animate-spin text-zinc-500" /></div>
+              ) : matchedArtistTab === "songs" ? (
+                matchedArtistTracks.length === 0 ? (
+                  <p className="text-zinc-500 text-sm py-8 text-center">No songs found for {matchedArtist.name}.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {matchedArtistTracks.slice(0, 30).map((track, i) => (
+                      <SpotifyTrackCard
+                        key={track.id}
+                        track={track}
+                        rank={i + 1}
+                        onGetSimilar={handleGetSimilar}
+                        onPlay={(t) => handlePlay(t, matchedArtistTracks)}
+                        onAddToPlaylist={handleAddToPlaylist}
+                        onAlbumSelect={() => handleAlbumSelectFromTrack(track)}
+                        isCurrentlyPlaying={isTrackPlaying(track)}
+                      />
+                    ))}
+                  </div>
+                )
+              ) : matchedArtistTab === "albums" ? (
+                matchedArtistAlbums.length === 0 ? (
+                  <p className="text-zinc-500 text-sm py-8 text-center">No albums found for {matchedArtist.name}.</p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    {matchedArtistAlbums.map((album) => (
+                      <SpotifyAlbumCard key={album.id} album={album} onSelect={setSelectedAlbum} />
+                    ))}
+                  </div>
+                )
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <SpotifyArtistCard artist={matchedArtist} onSelect={setSelectedArtist} />
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-2">
             {TABS.map((t) => (
               <button key={t.value} onClick={() => handleTabChange(t.value)}
@@ -668,7 +753,7 @@ export default function SearchClient() {
             ))}
           </div>
 
-          {tab === "track" && (
+          {tab === "track" && !matchedArtist && (
             <div className="space-y-1">
               {!loadingArtists && artists.length > 0 && (
                 <section className="space-y-3 pb-4">
