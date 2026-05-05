@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { usePlayerStore } from "@/store/player";
 import { useLikesStore } from "@/store/likes";
-import { Play, Pause, SkipBack, SkipForward, X, Music, Repeat, Repeat1, Shuffle, ChevronDown, ListPlus, Loader2, Heart, Volume1, Volume2, VolumeX, ListOrdered, Timer, MicVocal } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, X, Music, Repeat, Repeat1, Shuffle, ChevronDown, ListPlus, Loader2, Heart, Volume1, Volume2, VolumeX, ListOrdered, Timer, MicVocal, Maximize2, Minimize2 } from "lucide-react";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
@@ -70,6 +70,7 @@ export default function PlayerBar() {
   const [showTimerPicker, setShowTimerPicker] = useState(false);
   const [timerRemaining, setTimerRemaining] = useState<string | null>(null);
   const [showLyrics, setShowLyrics] = useState(false);
+  const [lyricsExpanded, setLyricsExpanded] = useState(false);
   const [modalTrack, setModalTrack] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [resolvingAdd, setResolvingAdd] = useState(false);
   const fetchingRef = useRef(false);
@@ -471,6 +472,12 @@ export default function PlayerBar() {
                       className={`shrink-0 p-2.5 rounded-2xl transition-colors ${showLyrics ? "text-[#E8282B] bg-[#E8282B]/10" : "text-white/30 hover:text-white hover:bg-white/[0.07]"}`}>
                       <MicVocal size={18} />
                     </button>
+                    {showLyrics && (
+                      <button onClick={() => setLyricsExpanded((v) => !v)} title="Expand lyrics"
+                        className={`shrink-0 p-2.5 rounded-2xl transition-colors ${lyricsExpanded ? "text-[#E8282B] bg-[#E8282B]/10" : "text-white/30 hover:text-white hover:bg-white/[0.07]"}`}>
+                        <Maximize2 size={18} />
+                      </button>
+                    )}
                     <div className="relative">
                       <button
                         onClick={() => setShowTimerPicker((v) => !v)}
@@ -531,6 +538,29 @@ export default function PlayerBar() {
                   </div>
                   {showLyrics && <LyricsPanel track={currentTrack} progressMs={progressMs} />}
                 </div>
+
+                {/* ── Fullscreen lyrics overlay ── */}
+                {showLyrics && lyricsExpanded && (
+                  <div className="fixed inset-0 z-[999] flex flex-col"
+                    style={{ background: "rgba(9,3,5,0.97)", backdropFilter: "blur(32px)" }}>
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 pt-12 pb-4 shrink-0">
+                      <button onClick={() => setLyricsExpanded(false)}
+                        className="p-2.5 rounded-2xl text-white/40 hover:text-white hover:bg-white/[0.07] transition-colors">
+                        <Minimize2 size={20} />
+                      </button>
+                      <div className="text-center">
+                        <p className="text-sm font-semibold text-white truncate max-w-[200px]">{currentTrack.name}</p>
+                        <p className="text-xs text-white/40 truncate max-w-[200px]">{currentTrack.artist}</p>
+                      </div>
+                      <div className="w-10" />
+                    </div>
+                    {/* Lyrics */}
+                    <div className="flex flex-col flex-1 overflow-hidden px-2">
+                      <LyricsPanel track={currentTrack} progressMs={progressMs} fullscreen />
+                    </div>
+                  </div>
+                )}
 
                 <p className="text-center text-xs text-white/20">{Math.max(queueIndex + 1, 1)} / {queue.length} in queue</p>
               </div>

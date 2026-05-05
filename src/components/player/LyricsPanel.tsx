@@ -23,9 +23,10 @@ function parseLrc(lrc: string): LrcLine[] {
 interface Props {
   track: PlayableTrack;
   progressMs: number;
+  fullscreen?: boolean;
 }
 
-export default function LyricsPanel({ track, progressMs }: Props) {
+export default function LyricsPanel({ track, progressMs, fullscreen }: Props) {
   const [syncedLines, setSyncedLines] = useState<LrcLine[] | null>(null);
   const [plainText, setPlainText] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,8 +71,8 @@ export default function LyricsPanel({ track, progressMs }: Props) {
   return (
     <div
       ref={containerRef}
-      className="max-h-56 overflow-y-auto rounded-2xl px-4 py-3 space-y-2 scrollbar-hide"
-      style={{ background: "var(--card)" }}
+      className={`overflow-y-auto rounded-2xl px-4 py-3 space-y-3 scrollbar-hide ${fullscreen ? "flex-1 h-0" : "max-h-56"}`}
+      style={{ background: fullscreen ? "transparent" : "var(--card)" }}
     >
       {loading && (
         <div className="flex items-center justify-center py-8">
@@ -92,10 +93,10 @@ export default function LyricsPanel({ track, progressMs }: Props) {
           ref={i === activeIdx ? activeRef : null}
           className={`text-center leading-snug transition-all duration-300 ${
             i === activeIdx
-              ? "text-white font-bold text-base"
+              ? `font-bold ${fullscreen ? "text-white text-xl" : "text-white text-base"}`
               : Math.abs(i - activeIdx) <= 2
-              ? "text-white/40 text-sm"
-              : "text-white/20 text-sm"
+              ? `${fullscreen ? "text-white/65 text-base" : "text-white/40 text-sm"}`
+              : `${fullscreen ? "text-white/35 text-sm" : "text-white/20 text-sm"}`
           }`}
         >
           {line.text}
@@ -103,7 +104,7 @@ export default function LyricsPanel({ track, progressMs }: Props) {
       ))}
 
       {!loading && plainText && (
-        <pre className="text-white/60 text-sm whitespace-pre-wrap font-sans leading-relaxed">
+        <pre className={`whitespace-pre-wrap font-sans leading-relaxed ${fullscreen ? "text-white/75 text-base" : "text-white/60 text-sm"}`}>
           {plainText}
         </pre>
       )}

@@ -329,29 +329,21 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
   // ── Grid view ────────────────────────────────────────────────────────────
   return (
     <>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-5 gap-1.5">
         {pinned.map((pl) => {
           const tracks = tracksMap[pl.playlist_id];
           return (
             <div key={pl.id}
               onClick={() => openPlaylist(pl.playlist_id)}
-              className="rounded-xl overflow-hidden border cursor-pointer transition-all duration-200 active:scale-[0.97] hover:border-white/[0.12]"
+              className="rounded-lg overflow-hidden border cursor-pointer transition-all duration-200 active:scale-[0.97] hover:border-white/[0.12]"
               style={{ background: "var(--card)", borderColor: "rgba(255,255,255,0.07)" }}
             >
               <div className="relative aspect-square w-full overflow-hidden" style={{ background: "var(--surface)" }}>
-                <CoverArt tracks={tracks} imageUrl={pl.playlist_image || null} name={pl.playlist_name} size={130} />
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.35)" }}>
-                  <div className="w-8 h-8 rounded-full bg-[#E8282B] flex items-center justify-center shadow-lg">
-                    <Play size={13} fill="white" className="text-white ml-0.5" />
-                  </div>
-                </div>
+                <CoverArt tracks={tracks} imageUrl={pl.playlist_image || null} name={pl.playlist_name} size={80} />
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
               </div>
-              <div className="p-2">
-                <p className="text-white text-xs font-semibold truncate leading-tight">{pl.playlist_name}</p>
-                <p className="text-[10px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
-                  {tracks ? `${tracks.length} tracks` : "Pinned"}
-                </p>
+              <div className="px-1 py-1">
+                <p className="text-white text-[9px] font-semibold truncate leading-tight">{pl.playlist_name}</p>
               </div>
             </div>
           );
