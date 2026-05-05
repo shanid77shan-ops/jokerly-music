@@ -18,14 +18,17 @@ import { LANGUAGES } from "@/lib/languages";
 import ListeningWaveform from "@/components/ui/ListeningWaveform";
 
 interface Suggestion {
-  type: "track" | "artist";
+  type: "track" | "artist" | "album";
   name: string;
   sub: string;
   image: string | null;
   id: string;
   uri?: string;
   durationMs?: number;
+  album?: SpotifyAlbum;
 }
+
+type SuggestionFilter = "all" | "track" | "artist" | "album";
 
 interface PinnedArtist {
   id: string;
@@ -158,6 +161,7 @@ export default function HomeClient() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionFilter, setSuggestionFilter] = useState<SuggestionFilter>("all");
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [modalTrack, setModalTrack] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
@@ -405,12 +409,13 @@ export default function HomeClient() {
   // Suggestions
   useEffect(() => {
     clearTimeout(suggestTimer.current);
-    if (query.trim().length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+    if (query.trim().length < 2) { setSuggestions([]); setShowSuggestions(false); setSuggestionFilter("all"); return; }
     const key = query.trim().toLowerCase();
     const cached = suggestCache.get(key);
-    if (cached) { setSuggestions(cached); setShowSuggestions(true); return; }
+    if (cached) { setSuggestions(cached); setShowSuggestions(true); setSuggestionFilter("all"); return; }
     setSuggestionsLoading(true);
     setShowSuggestions(true); // show dropdown with spinner immediately
+    setSuggestionFilter("all");
     const token = session?.accessToken as string | undefined;
     suggestTimer.current = setTimeout(async () => {
       if (!token) { setSuggestionsLoading(false); return; }
@@ -420,11 +425,12 @@ export default function HomeClient() {
             `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          return res.ok ? res.json() : { tracks: { items: [] }, artists: { items: [] } };
+          return res.ok ? res.json() : { tracks: { items: [] }, artists: { items: [] }, albums: { items: [] } };
         };
-        const [tracksRes, artistsRes] = await Promise.allSettled([
+        const [tracksRes, artistsRes, albumsRes] = await Promise.allSettled([
           spotifySearch("track", 5),
           spotifySearch("artist", 3),
+          spotifySearch("album", 4),
         ]);
         const trackSugs: Suggestion[] = tracksRes.status === "fulfilled"
           ? (tracksRes.value.tracks?.items ?? []).slice(0, 5).map((t: SpotifyTrack) => ({
@@ -437,7 +443,17 @@ export default function HomeClient() {
               image: artistImage(a) ?? null, id: a.id,
             }))
           : [];
-        const combined = [...trackSugs, ...artistSugs];
+        const albumSugs: Suggestion[] = albumsRes.status === "fulfilled"
+          ? (albumsRes.value.albums?.items ?? []).slice(0, 4).map((a: SpotifyAlbum) => ({
+              type: "album" as const,
+              name: a.name,
+              sub: Array.isArray(a.artists) ? a.artists.map((ar) => ar.name).join(", ") : "Album",
+              image: Array.isArray(a.images) ? (a.images[0]?.url ?? null) : null,
+              id: a.id,
+              album: a,
+            }))
+          : [];
+        const combined = [...trackSugs, ...artistSugs, ...albumSugs];
         // Only cache non-empty results — never persist failures
         if (combined.length > 0) suggestCache.set(key, combined);
         setSuggestions(combined);
@@ -518,6 +534,11 @@ export default function HomeClient() {
 
   const handleSuggestionClick = (s: Suggestion) => {
     if (s.type === "artist") { setQuery(s.name); setShowSuggestions(false); router.push(`/search?q=${encodeURIComponent(s.name)}`); return; }
+    if (s.type === "album" && s.album) {
+      setShowSuggestions(false);
+      setSelectedAlbum(s.album);
+      return;
+    }
     setPlayingKey(s.id);
     setShowSuggestions(false);
     setQueueAndPlay([toPlayableFromSuggestion(s)], 0);
@@ -529,6 +550,7 @@ export default function HomeClient() {
   };
 
   const isRefreshBusy = refreshing || feedLoading;
+  const visibleSuggestions = suggestions.filter((s) => suggestionFilter === "all" || s.type === suggestionFilter);
 
   return (
     <div className="space-y-8">
@@ -565,10 +587,33 @@ export default function HomeClient() {
               <div className="flex items-center justify-center py-6"><Loader2 size={16} className="animate-spin text-white/30" /></div>
             ) : (
               <>
-                {suggestions.filter((s) => s.type === "track").length > 0 && (
+                <div className="px-3 pt-3 pb-2 border-b border-white/[0.06]">
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                    {([
+                      { value: "all", label: "All" },
+                      { value: "track", label: "Songs" },
+                      { value: "artist", label: "Artists" },
+                      { value: "album", label: "Albums" },
+                    ] as const).map((item) => (
+                      <button
+                        key={item.value}
+                        onClick={() => setSuggestionFilter(item.value)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                          suggestionFilter === item.value
+                            ? "bg-white text-black"
+                            : "bg-white/[0.06] text-white/65 hover:text-white hover:bg-white/[0.10]"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {visibleSuggestions.filter((s) => s.type === "track").length > 0 && (
                   <div>
                     <p className="text-white/25 text-[10px] font-semibold px-4 pt-3 pb-1 uppercase tracking-widest">Tracks</p>
-                    {suggestions.filter((s) => s.type === "track").map((s) => (
+                    {visibleSuggestions.filter((s) => s.type === "track").map((s) => (
                       <div key={s.id} className="flex items-center gap-2 px-3 py-2 hover:bg-white/[0.05] transition-colors group">
                         <button onClick={() => handleSuggestionClick(s)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
                           <div className="relative w-9 h-9 shrink-0">
@@ -590,10 +635,10 @@ export default function HomeClient() {
                     ))}
                   </div>
                 )}
-                {suggestions.filter((s) => s.type === "artist").length > 0 && (
+                {visibleSuggestions.filter((s) => s.type === "artist").length > 0 && (
                   <div className="border-t border-white/[0.06]">
                     <p className="text-white/25 text-[10px] font-semibold px-4 pt-3 pb-1 uppercase tracking-widest">Artists</p>
-                    {suggestions.filter((s) => s.type === "artist").map((s) => (
+                    {visibleSuggestions.filter((s) => s.type === "artist").map((s) => (
                       <button key={s.id} onClick={() => handleSuggestionClick(s)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.05] transition-colors text-left">
                         <div className="relative w-9 h-9 shrink-0">
                           {s.image ? <Image src={s.image} alt={s.name} fill unoptimized sizes="36px" className="rounded-full object-cover" /> : <div className="w-9 h-9 bg-white/[0.06] rounded-full flex items-center justify-center"><Mic2 size={13} className="text-white/25" /></div>}
@@ -601,6 +646,23 @@ export default function HomeClient() {
                         <div className="min-w-0 flex-1">
                           <p className="text-white text-sm font-medium truncate">{s.name}</p>
                           <p className="text-white/35 text-xs truncate">{s.sub}</p>
+                        </div>
+                        <Search size={12} className="text-white/20 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {visibleSuggestions.filter((s) => s.type === "album").length > 0 && (
+                  <div className="border-t border-white/[0.06]">
+                    <p className="text-white/25 text-[10px] font-semibold px-4 pt-3 pb-1 uppercase tracking-widest">Albums</p>
+                    {visibleSuggestions.filter((s) => s.type === "album").map((s) => (
+                      <button key={s.id} onClick={() => handleSuggestionClick(s)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.05] transition-colors text-left">
+                        <div className="relative w-9 h-9 shrink-0">
+                          {s.image ? <Image src={s.image} alt={s.name} fill unoptimized sizes="36px" className="rounded-lg object-cover" /> : <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center"><Music size={13} className="text-white/25" /></div>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white text-sm font-medium truncate">{s.name}</p>
+                          <p className="text-white/35 text-xs truncate">{s.sub || "Album"}</p>
                         </div>
                         <Search size={12} className="text-white/20 shrink-0" />
                       </button>
