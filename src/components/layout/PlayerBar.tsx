@@ -507,28 +507,7 @@ export default function PlayerBar() {
                       )}
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-white/[0.08] px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setCrossfadeEnabled(!crossfadeEnabled)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${crossfadeEnabled ? "text-[#E8282B] bg-[#E8282B]/10" : "text-white/45 hover:text-white hover:bg-white/[0.08]"}`}
-                      >
-                        Crossfade {crossfadeEnabled ? `${crossfadeSeconds}s` : "Off"}
-                      </button>
-                      {crossfadeEnabled && (
-                        <input
-                          type="range"
-                          min={1}
-                          max={12}
-                          step={1}
-                          value={crossfadeSeconds}
-                          onChange={(e) => setCrossfadeSeconds(parseInt(e.target.value, 10))}
-                          className="flex-1 h-1 rounded-full appearance-none cursor-pointer accent-[#E8282B]"
-                          style={{ background: `linear-gradient(to right, #E8282B ${((crossfadeSeconds - 1) / 11) * 100}%, rgba(255,255,255,0.12) ${((crossfadeSeconds - 1) / 11) * 100}%)` }}
-                        />
-                      )}
-                    </div>
-                  </div>
+
                   {showLyrics && (
                     <div
                       className="fixed inset-0 z-[999] flex items-center justify-center p-4"

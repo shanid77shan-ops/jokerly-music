@@ -39,6 +39,7 @@ interface PlayerState {
   setVolume: (volume: number) => Promise<void>;
   removeFromQueue: (index: number) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
+  moveToNext: (index: number) => void;
   setSleepTimer: (minutes: number | null) => void;
   setQueueAndPlay: (tracks: PlayableTrack[], index: number) => Promise<void>;
   updateTrackUri: (index: number, uri: string | null, imageUrl?: string | null, durationMs?: number) => void;
@@ -505,6 +506,20 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     if (fromIndex === queueIndex) newQueueIndex = toIndex;
     else if (fromIndex < queueIndex && toIndex >= queueIndex) newQueueIndex = queueIndex - 1;
     else if (fromIndex > queueIndex && toIndex <= queueIndex) newQueueIndex = queueIndex + 1;
+    set({ queue: updated, queueIndex: newQueueIndex });
+  },
+
+  moveToNext: (index) => {
+    const { queue, queueIndex } = get();
+    if (index === queueIndex || index === queueIndex + 1) return;
+    // Destination: slot right after current (accounting for removal shifting)
+    const toIndex = index < queueIndex ? queueIndex : queueIndex + 1;
+    const updated = [...queue];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(toIndex, 0, moved);
+    let newQueueIndex = queueIndex;
+    if (index < queueIndex && toIndex >= queueIndex) newQueueIndex = queueIndex - 1;
+    else if (index > queueIndex && toIndex <= queueIndex) newQueueIndex = queueIndex + 1;
     set({ queue: updated, queueIndex: newQueueIndex });
   },
 
