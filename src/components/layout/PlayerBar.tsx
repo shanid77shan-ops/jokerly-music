@@ -280,6 +280,9 @@ export default function PlayerBar() {
 
   return (
     <>
+      {/* ── Queue Sheet ── */}
+      {isQueueOpen && <QueueSheet onPlayIndex={fetchAndPlay} />}
+
       {/* ── Expanded Now Playing ── */}
       {expanded && (
         <div className="fixed inset-0 z-50 p-4 sm:p-6 flex items-end sm:items-center justify-center"
@@ -396,7 +399,51 @@ export default function PlayerBar() {
                       className="shrink-0 p-2.5 rounded-2xl text-white/30 hover:text-[#E8282B] hover:bg-[#E8282B]/10 transition-colors disabled:opacity-40">
                       {resolvingAdd ? <Loader2 size={18} className="animate-spin" /> : <ListPlus size={18} />}
                     </button>
+                    <button onClick={() => { usePlayerStore.setState({ isQueueOpen: true, isPlayerExpanded: false }); }} title="Queue"
+                      className="shrink-0 p-2.5 rounded-2xl text-white/30 hover:text-white hover:bg-white/[0.07] transition-colors">
+                      <ListOrdered size={18} />
+                    </button>
+                    <button onClick={() => setShowLyrics((v) => !v)} title="Lyrics"
+                      className={`shrink-0 p-2.5 rounded-2xl transition-colors ${showLyrics ? "text-[#E8282B] bg-[#E8282B]/10" : "text-white/30 hover:text-white hover:bg-white/[0.07]"}`}>
+                      <MicVocal size={18} />
+                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowTimerPicker((v) => !v)}
+                        title="Sleep timer"
+                        className={`shrink-0 p-2.5 rounded-2xl transition-colors ${sleepTimerEndsAt ? "text-[#E8282B] bg-[#E8282B]/10" : "text-white/30 hover:text-white hover:bg-white/[0.07]"}`}
+                      >
+                        <Timer size={18} />
+                      </button>
+                      {timerRemaining && (
+                        <span className="absolute -top-1 -right-1 text-[9px] font-bold text-[#E8282B] bg-black/80 px-1 rounded-full leading-tight">
+                          {timerRemaining}
+                        </span>
+                      )}
+                      {showTimerPicker && (
+                        <div className="absolute bottom-full right-0 mb-2 rounded-2xl border border-white/[0.08] p-3 shadow-2xl z-10 w-44"
+                          style={{ background: "var(--surface)" }}>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest mb-2">Sleep Timer</p>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {[15, 30, 45, 60].map((m) => (
+                              <button key={m} onClick={() => { setSleepTimer(m); setShowTimerPicker(false); }}
+                                className={`py-2 rounded-xl text-xs font-medium transition-colors ${sleepTimerEndsAt ? "bg-[#E8282B] text-white" : "text-white/70 hover:bg-white/[0.12]"}`}
+                                style={!sleepTimerEndsAt ? { background: "rgba(255,255,255,0.07)" } : {}}>
+                                {m}m
+                              </button>
+                            ))}
+                          </div>
+                          {sleepTimerEndsAt && (
+                            <button onClick={() => { setSleepTimer(null); setShowTimerPicker(false); }}
+                              className="mt-2 w-full py-1.5 rounded-xl text-xs text-white/40 hover:text-white hover:bg-white/[0.07] transition-colors">
+                              Cancel Timer
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  {showLyrics && <LyricsPanel track={currentTrack} progressMs={progressMs} />}
                 </div>
 
                 <p className="text-center text-xs text-white/20">{Math.max(queueIndex + 1, 1)} / {queue.length} in queue</p>
@@ -472,6 +519,10 @@ export default function PlayerBar() {
             <button onClick={handleAddToPlaylist} disabled={resolvingAdd} title="Add to playlist"
               className="p-2 rounded-xl text-[#E8282B]/50 hover:text-[#E8282B] hover:bg-[#E8282B]/10 transition-colors disabled:opacity-30">
               {resolvingAdd ? <Loader2 size={16} className="animate-spin" /> : <ListPlus size={16} />}
+            </button>
+            <button onClick={() => usePlayerStore.setState({ isQueueOpen: true })} title="Queue"
+              className="p-2 rounded-xl text-white/25 hover:text-white hover:bg-white/[0.06] transition-colors">
+              <ListOrdered size={16} />
             </button>
             <div className="hidden sm:flex items-center gap-1.5 shrink-0">
               <button onClick={() => setVolume(volume === 0 ? 0.5 : 0)} className="p-2 rounded-xl text-white/30 hover:text-white transition-colors">
