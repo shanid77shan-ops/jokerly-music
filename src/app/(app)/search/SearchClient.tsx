@@ -753,7 +753,7 @@ export default function SearchClient() {
             ))}
           </div>
 
-          {tab === "track" && !matchedArtist && (
+          {tab === "track" && (
             <div className="space-y-1">
               {!loadingArtists && artists.length > 0 && (
                 <section className="space-y-3 pb-4">

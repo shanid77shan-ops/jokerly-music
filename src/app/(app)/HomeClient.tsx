@@ -10,7 +10,7 @@ import PinnedPlaylistSection from "@/components/home/PinnedPlaylistSection";
 import PersonalizeSheet, { FavoriteArtist } from "@/components/home/PersonalizeSheet";
 import ArtistSheet from "@/components/music/ArtistSheet";
 import AlbumSheet from "@/components/music/AlbumSheet";
-import { SpotifyTrack, SpotifyArtist, trackImage, artistImage, artistNames } from "@/types/spotify";
+import { SpotifyTrack, SpotifyArtist, SpotifyAlbum, trackImage, artistImage, artistNames } from "@/types/spotify";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import Image from "next/image";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
