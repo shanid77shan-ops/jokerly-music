@@ -99,6 +99,35 @@ function getSpotifyCtor(): SpotifyPlayerCtor | null {
 // Keep UI stable for a brief window right after a play request.
 let ignorePausedUntil = 0;
 let lastLoggedUri = "";
+let suppressAutoResumeUntil = 0;
+let autoResumeTimer: ReturnType<typeof setInterval> | null = null;
+
+function stopAutoResumeLoop() {
+  if (!autoResumeTimer) return;
+  clearInterval(autoResumeTimer);
+  autoResumeTimer = null;
+}
+
+function tryAutoResumeFromInterruption() {
+  const snapshot = usePlayerStore.getState();
+  if (Date.now() < suppressAutoResumeUntil) return;
+  if (!snapshot.player || !snapshot.currentTrack || snapshot.queueIndex < 0) {
+    stopAutoResumeLoop();
+    return;
+  }
+  if (snapshot.isPlaying) {
+    stopAutoResumeLoop();
+    return;
+  }
+
+  snapshot.player.togglePlay().catch(() => {});
+}
+
+function startAutoResumeLoop() {
+  if (autoResumeTimer) return;
+  tryAutoResumeFromInterruption();
+  autoResumeTimer = setInterval(tryAutoResumeFromInterruption, 700);
+}
 
 async function loadSpotifySdk(): Promise<SpotifyPlayerCtor | null> {
   const existing = getSpotifyCtor();
@@ -301,6 +330,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     });
 
     player.addListener("not_ready", () => {
+      stopAutoResumeLoop();
       set({ deviceId: null, isPlayerReady: false });
     });
 
@@ -321,7 +351,26 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
         currentUri === previous.currentTrack?.uri;
 
       if (likelyEnded) {
+        stopAutoResumeLoop();
         set({ endedToken: previous.endedToken + 1 });
+        return;
+      }
+
+      if (nextState && !nextState.paused) {
+        stopAutoResumeLoop();
+        return;
+      }
+
+      const unexpectedPausedInterruption =
+        !!nextState &&
+        previous.isPlaying &&
+        nextState.paused &&
+        nextState.position > 0 &&
+        Date.now() >= ignorePausedUntil &&
+        Date.now() >= suppressAutoResumeUntil;
+
+      if (unexpectedPausedInterruption) {
+        startAutoResumeLoop();
       }
     });
 
@@ -442,8 +491,17 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
   },
 
   togglePlay: async () => {
-    const { player } = get();
+    const { player, isPlaying } = get();
     if (!player) return;
+
+    if (isPlaying) {
+      // User-initiated pause should not trigger interruption auto-resume.
+      suppressAutoResumeUntil = Date.now() + 3000;
+      stopAutoResumeLoop();
+    } else {
+      suppressAutoResumeUntil = 0;
+    }
+
     await player.togglePlay();
   },
 
@@ -456,6 +514,8 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
 
   stop: async () => {
     const { player } = get();
+    suppressAutoResumeUntil = Date.now() + 60_000;
+    stopAutoResumeLoop();
     if (player) {
       await player.pause().catch(() => {});
     }
