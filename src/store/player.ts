@@ -116,6 +116,33 @@ function requestAudioFocus() {
     if (_iosAudioCtx.state === "suspended") _iosAudioCtx.resume();
   } catch { /* ignore */ }
 }
+
+// Setup MediaSession handlers for external play/pause (lock screen, other apps)
+function setupMediaSessionHandlers() {
+  if (typeof navigator === "undefined" || !navigator.mediaSession) return;
+
+  navigator.mediaSession.setActionHandler("play", () => {
+    const snapshot = usePlayerStore.getState();
+    if (!snapshot.isPlaying && snapshot.currentTrack) {
+      addLog("[MediaSession] External play command — resuming Jokerly", "info");
+      snapshot.togglePlay().catch(() => {});
+    }
+  });
+
+  navigator.mediaSession.setActionHandler("pause", () => {
+    const snapshot = usePlayerStore.getState();
+    if (snapshot.isPlaying) {
+      addLog("[MediaSession] External pause command — pausing Jokerly", "info");
+      snapshot.togglePlay().catch(() => {});
+    }
+  });
+}
+
+// Update MediaSession playback state so OS knows we're playing/paused
+function updateMediaSessionState(isPlaying: boolean) {
+  if (typeof navigator === "undefined" || !navigator.mediaSession) return;
+  navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+}
 let ignorePausedUntil = 0;
 let lastLoggedUri = "";
 let suppressAutoResumeUntil = 0;
@@ -238,6 +265,8 @@ function hydrateFromSdkState(state: SpotifyPlayerState | null) {
     progressMs: state.position,
     durationMs: state.duration,
   });
+
+  updateMediaSessionState(!state.paused);
 
   if (!state.paused && currentTrack?.uri && currentTrack.uri !== lastLoggedUri) {
     lastLoggedUri = currentTrack.uri;
@@ -448,6 +477,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
 
     const connected = await player.connect();
     if (connected) {
+      setupMediaSessionHandlers(); // respond to external play/pause commands
       set({ player });
       player.setVolume(get().volume).catch(() => {});
     }
@@ -564,6 +594,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
       progressMs: 0,
       durationMs: nextTrack.durationMs ?? 0,
     });
+    updateMediaSessionState(true);
   },
 
   togglePlay: async () => {
@@ -574,9 +605,11 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
       // User-initiated pause should not trigger interruption auto-resume.
       suppressAutoResumeUntil = Date.now() + 3000;
       stopAutoResumeLoop();
+      updateMediaSessionState(false); // proactive update
     } else {
       suppressAutoResumeUntil = 0;
       requestAudioFocus(); // steal iOS audio focus when resuming
+      updateMediaSessionState(true); // proactive update
     }
 
     await player.togglePlay();
@@ -608,6 +641,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
       progressMs: 0,
       durationMs: 0,
     });
+    updateMediaSessionState(false);
   },
 
   setRepeatMode: async (mode) => {
