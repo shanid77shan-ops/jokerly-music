@@ -149,20 +149,61 @@ let suppressAutoResumeUntil = 0;
 let autoResumeTimer: ReturnType<typeof setInterval> | null = null;
 let pendingPlayOnReadyIndex: number | null = null;
 let playRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let playRetryIndex: number | null = null;
+let playRetryCount = 0;
+const MAX_PLAY_RETRIES = 4;
 
-function clearPlayRetry() {
+function clearPlayRetry(resetState = true) {
   if (!playRetryTimer) return;
   clearTimeout(playRetryTimer);
   playRetryTimer = null;
+  if (resetState) {
+    playRetryIndex = null;
+    playRetryCount = 0;
+  }
 }
 
 function schedulePlayRetry(index: number) {
-  clearPlayRetry();
+  if (playRetryIndex !== index) {
+    playRetryIndex = index;
+    playRetryCount = 0;
+  }
+
+  if (playRetryCount >= MAX_PLAY_RETRIES) {
+    addLog(`[playIndex] Giving up after ${MAX_PLAY_RETRIES} retries for index ${index}`, "error");
+    clearPlayRetry(true);
+    return;
+  }
+
+  playRetryCount += 1;
+  const delayMs = Math.min(1700, 350 + playRetryCount * 250);
+  clearPlayRetry(false);
   playRetryTimer = setTimeout(() => {
     const snapshot = usePlayerStore.getState();
-    if (snapshot.isPlaying || snapshot.queueIndex !== index) return;
+    if (snapshot.isPlaying || snapshot.queueIndex !== index) {
+      clearPlayRetry(true);
+      return;
+    }
     Promise.resolve(snapshot.playIndex(index)).catch(() => {});
-  }, 450);
+  }, delayMs);
+}
+
+function parseErrorText(error: unknown) {
+  const base = error instanceof Error ? error.message : String(error);
+  // Some API responses are nested JSON serialized as strings; unwrap once when possible.
+  try {
+    const parsed = JSON.parse(base) as { error?: unknown };
+    if (typeof parsed?.error === "string") return `${base} ${parsed.error}`;
+  } catch {
+    // keep base message
+  }
+  return base;
+}
+
+function isStaleDeviceError(errorText: string) {
+  const normalized = errorText.toLowerCase();
+  return normalized.includes("device not found") ||
+    (normalized.includes('"status"') && normalized.includes("404") && normalized.includes("not found"));
 }
 
 function stopAutoResumeLoop() {
@@ -382,6 +423,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
 
     player.addListener("ready", (payload) => {
       const ready = payload as { device_id: string };
+      clearPlayRetry(true);
       addLog(`[SDK] Player ready, device: ${ready.device_id}`, "info");
       set({ deviceId: ready.device_id, isPlayerReady: true });
       // Do NOT call /me/player with play:false here — it pauses any currently
@@ -407,6 +449,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
 
     player.addListener("not_ready", () => {
       addLog("[SDK] Player not ready (device went offline)", "warn");
+      clearPlayRetry(true);
       stopAutoResumeLoop();
       set({ deviceId: null, isPlayerReady: false });
     });
@@ -549,7 +592,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     }
 
     pendingPlayOnReadyIndex = null;
-    clearPlayRetry();
+    clearPlayRetry(index !== playRetryIndex);
     ignorePausedUntil = Date.now() + 1400;
     const hasActivePlayback = !!currentTrack && isPlaying;
     set({
@@ -575,7 +618,25 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
         positionMs: 0,
       });
     } catch (e) {
-      addLog(`[playIndex] API error: ${e instanceof Error ? e.message : String(e)} — retrying`, "error");
+      const errorText = parseErrorText(e);
+      if (isStaleDeviceError(errorText)) {
+        addLog(`[playIndex] Stale device detected - waiting for SDK ready before retry`, "warn");
+        pendingPlayOnReadyIndex = index;
+        clearPlayRetry(true);
+        set({
+          deviceId: null,
+          pendingIndex: index,
+          isTransitioning: false,
+          ...(hasActivePlayback ? {} : { isPlaying: false }),
+        });
+        const player = get().player;
+        if (player) {
+          Promise.resolve(player.connect()).catch(() => {});
+        }
+        return;
+      }
+
+      addLog(`[playIndex] API error: ${errorText} - retrying`, "error");
       schedulePlayRetry(index);
       set({
         pendingIndex: null,
