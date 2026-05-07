@@ -125,7 +125,7 @@ function setupMediaSessionHandlers() {
     const snapshot = usePlayerStore.getState();
     if (!snapshot.isPlaying && snapshot.currentTrack) {
       addLog("[MediaSession] External play command — resuming Jokerly", "info");
-      snapshot.togglePlay().catch(() => {});
+      Promise.resolve(snapshot.togglePlay()).catch(() => {});
     }
   });
 
@@ -133,7 +133,7 @@ function setupMediaSessionHandlers() {
     const snapshot = usePlayerStore.getState();
     if (snapshot.isPlaying) {
       addLog("[MediaSession] External pause command — pausing Jokerly", "info");
-      snapshot.togglePlay().catch(() => {});
+      Promise.resolve(snapshot.togglePlay()).catch(() => {});
     }
   });
 }
