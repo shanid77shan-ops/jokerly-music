@@ -98,6 +98,24 @@ function getSpotifyCtor(): SpotifyPlayerCtor | null {
 
 // Spotify emits short-lived paused states during track switches.
 // Keep UI stable for a brief window right after a play request.
+
+// iOS audio focus — play a 1-sample silent buffer synchronously within every
+// user-gesture handler so iOS transfers audio focus from whatever else is playing.
+let _iosAudioCtx: AudioContext | null = null;
+function requestAudioFocus() {
+  if (typeof window === "undefined") return;
+  try {
+    const ACtx = (window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+    if (!ACtx) return;
+    if (!_iosAudioCtx) _iosAudioCtx = new ACtx();
+    const buf = _iosAudioCtx.createBuffer(1, 1, 22050);
+    const src = _iosAudioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(_iosAudioCtx.destination);
+    src.start(0);
+    if (_iosAudioCtx.state === "suspended") _iosAudioCtx.resume();
+  } catch { /* ignore */ }
+}
 let ignorePausedUntil = 0;
 let lastLoggedUri = "";
 let suppressAutoResumeUntil = 0;
@@ -436,6 +454,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
   },
 
   setQueueAndPlay: async (tracks, index) => {
+    requestAudioFocus(); // steal iOS audio focus synchronously within the user gesture
     set({ queue: tracks });
     get().playIndex(index);
   },
@@ -557,6 +576,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
       stopAutoResumeLoop();
     } else {
       suppressAutoResumeUntil = 0;
+      requestAudioFocus(); // steal iOS audio focus when resuming
     }
 
     await player.togglePlay();

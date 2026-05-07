@@ -341,34 +341,26 @@ export default function HomeClient() {
     return () => window.removeEventListener("pinned-albums-updated", handler);
   }, [fetchPinnedAlbums, isSessionHealthy]);
 
-  // Refresh everything
-  const handleRefresh = () => {
+  // Hard refresh — clears all caches then reloads the page
+  const handleRefresh = async () => {
     if (!isSessionHealthy) return;
     if (refreshing || feedLoading) return;
     setRefreshing(true);
+
+    // 1. Clear module-level caches
     homeCache = null;
-    const currentLangs = langs ?? [];
-    Promise.all([
-      currentLangs.length ? new Promise<void>((res) => {
-        setFeedLoading(true);
-        fetch(`/api/spotify/language-feed?langs=${currentLangs.join(",")}&r=${Date.now()}`, { cache: "no-store" })
-          .then((r) => r.json())
-          .then((data) => { setFeedSections(data.sections ?? []); })
-          .catch(() => {})
-          .finally(() => { setFeedLoading(false); res(); });
-      }) : Promise.resolve(),
-      favoriteArtists.length ? new Promise<void>((res) => {
-        setForYouLoading(true);
-        fetch(`/api/spotify/for-you?artists=${favoriteArtists.map((a) => a.id).join(",")}&r=${Date.now()}`, { cache: "no-store" })
-          .then((r) => r.json())
-          .then((data) => { setForYouTracks(data.tracks ?? []); })
-          .catch(() => {})
-          .finally(() => { setForYouLoading(false); res(); });
-      }) : Promise.resolve(),
-    ]).finally(() => {
-      homeCache = { langs: langs ?? [], favoriteArtists, pinned, feedSections, forYouTracks, ts: Date.now() };
-      setRefreshing(false);
-    });
+    suggestCache.clear();
+
+    // 2. Clear all service worker caches
+    if (typeof caches !== "undefined") {
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      } catch { /* ignore */ }
+    }
+
+    // 3. Hard reload — bypasses browser disk cache
+    window.location.reload();
   };
 
   const toggleArtistPin = async (artist: SpotifyArtist) => {
