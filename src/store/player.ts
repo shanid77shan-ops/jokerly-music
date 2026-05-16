@@ -146,6 +146,8 @@ function updateMediaSessionState(isPlaying: boolean) {
 let ignorePausedUntil = 0;
 let lastLoggedUri = "";
 let suppressAutoResumeUntil = 0;
+let autoResumeAttempts = 0;
+const MAX_AUTO_RESUME_ATTEMPTS = 6;
 let autoResumeTimer: ReturnType<typeof setInterval> | null = null;
 let pendingPlayOnReadyIndex: number | null = null;
 let playRetryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -210,12 +212,13 @@ function stopAutoResumeLoop() {
   if (!autoResumeTimer) return;
   clearInterval(autoResumeTimer);
   autoResumeTimer = null;
+  autoResumeAttempts = 0;
 }
 
 function tryAutoResumeFromInterruption() {
   const snapshot = usePlayerStore.getState();
   if (Date.now() < suppressAutoResumeUntil) return;
-  if (!snapshot.player || !snapshot.currentTrack || snapshot.queueIndex < 0) {
+  if (!snapshot.player || !snapshot.currentTrack || snapshot.queueIndex < 0 || !snapshot.deviceId) {
     stopAutoResumeLoop();
     return;
   }
@@ -223,8 +226,15 @@ function tryAutoResumeFromInterruption() {
     stopAutoResumeLoop();
     return;
   }
+  if (autoResumeAttempts >= MAX_AUTO_RESUME_ATTEMPTS) {
+    addLog(`[AutoResume] Giving up after ${MAX_AUTO_RESUME_ATTEMPTS} attempts`, "warn");
+    suppressAutoResumeUntil = Date.now() + 30_000;
+    stopAutoResumeLoop();
+    return;
+  }
 
-  addLog(`[AutoResume] Attempting resume: "${snapshot.currentTrack.name}"`, "warn");
+  autoResumeAttempts += 1;
+  addLog(`[AutoResume] Attempting resume: "${snapshot.currentTrack.name}" (attempt ${autoResumeAttempts})`, "warn");
   snapshot.player.togglePlay().catch((e: unknown) => {
     addLog(`[AutoResume] togglePlay failed: ${e instanceof Error ? e.message : String(e)}`, "error");
   });
@@ -232,6 +242,7 @@ function tryAutoResumeFromInterruption() {
 
 function startAutoResumeLoop() {
   if (autoResumeTimer) return;
+  autoResumeAttempts = 0;
   tryAutoResumeFromInterruption();
   autoResumeTimer = setInterval(tryAutoResumeFromInterruption, 700);
 }
@@ -490,7 +501,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
         Date.now() >= ignorePausedUntil &&
         Date.now() >= suppressAutoResumeUntil;
 
-      if (unexpectedPausedInterruption) {
+      if (unexpectedPausedInterruption && get().deviceId) {
         addLog(`[SDK] Unexpected pause at ${nextState.position}ms — starting auto-resume`, "warn");
         startAutoResumeLoop();
       }
