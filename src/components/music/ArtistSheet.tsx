@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { SpotifyArtist, SpotifyTrack, artistImage, trackImage, artistNames } from "@/types/spotify";
-import { X, Loader2, ExternalLink, Music, Play, Pause, ListPlus, Pin, Heart } from "lucide-react";
+import { X, Loader2, ExternalLink, Music, Play, Pause, ListPlus, Pin, Heart, Share2 } from "lucide-react";
 import Image from "next/image";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import { useLikesStore } from "@/store/likes";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
+import ExportToYouTubeMusicModal from "@/components/export/ExportToYouTubeMusicModal";
 
 interface Props {
   artist: SpotifyArtist;
@@ -29,6 +30,7 @@ export default function ArtistSheet({ artist, onClose }: Props) {
   const [moreTracks, setMoreTracks] = useState<SpotifyTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [addModal, setAddModal] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
+  const [exportModal, setExportModal] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [pinning, setPinning] = useState(false);
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
@@ -135,7 +137,7 @@ export default function ArtistSheet({ artist, onClose }: Props) {
               </div>
             )}
 
-            {/* Close + external + like + pin */}
+            {/* Close + external + like + pin + export */}
             <div className="absolute top-3 right-3 flex items-center gap-1">
               <a
                 href={displayArtist.external_urls?.spotify}
@@ -147,6 +149,14 @@ export default function ArtistSheet({ artist, onClose }: Props) {
               >
                 <ExternalLink size={15} />
               </a>
+              <button
+                onClick={() => setExportModal(true)}
+                title="Export to YouTube Music"
+                className="p-2 rounded-xl text-white/60 hover:text-white transition-colors"
+                style={{ background: "rgba(0,0,0,0.45)" }}
+              >
+                <Share2 size={15} />
+              </button>
               <button
                 onClick={handleLikeArtist}
                 title={isLiked ? "Unlike artist" : "Like artist"}
@@ -259,6 +269,13 @@ export default function ArtistSheet({ artist, onClose }: Props) {
       </div>
 
       {addModal && <AddToPlaylistModal track={addModal} onClose={() => setAddModal(null)} />}
+      {exportModal && (
+        <ExportToYouTubeMusicModal
+          title={displayArtist.name}
+          tracks={allTracks.map((t) => ({ name: t.name, artist: artistNames(t) }))}
+          onClose={() => setExportModal(false)}
+        />
+      )}
     </>
   );
 }

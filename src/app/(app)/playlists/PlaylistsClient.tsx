@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2, Music, Play, Trash, PlayCircle, GripVertical, ListPlus, ArrowLeft, FolderInput, UserCircle2, Mic2, Heart } from "lucide-react";
+import { ListMusic, Plus, Pencil, Pin, Loader2, X, Check, Trash2, Music, Play, Trash, PlayCircle, GripVertical, ListPlus, ArrowLeft, FolderInput, UserCircle2, Mic2, Heart, Share2 } from "lucide-react";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
   useSensor, useSensors, DragEndEvent,
@@ -17,6 +17,7 @@ import { useToastStore } from "@/store/toast";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import AddFromPlaylistModal from "@/components/playlist/AddFromPlaylistModal";
+import ExportToYouTubeMusicModal from "@/components/export/ExportToYouTubeMusicModal";
 import ArtistSheet from "@/components/music/ArtistSheet";
 import { SpotifyArtist } from "@/types/spotify";
 import { useLikesStore } from "@/store/likes";
@@ -155,6 +156,7 @@ export default function PlaylistsClient() {
   const [removingTrack, setRemovingTrack] = useState<string | null>(null);
   const [addModal, setAddModal] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [addFromPlaylist, setAddFromPlaylist] = useState(false);
+  const [exportModal, setExportModal] = useState(false);
   const [pinnedArtists, setPinnedArtists] = useState<PinnedArtist[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
   const { toast } = useToastStore();
@@ -381,6 +383,11 @@ export default function PlaylistsClient() {
             title="Add tracks from another playlist"
             className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
             <FolderInput size={15} />
+          </button>
+          <button onClick={() => setExportModal(true)}
+            title="Export to YouTube Music"
+            className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <Share2 size={15} />
           </button>
           <button onClick={() => setEdit({ id: pl.id, name: pl.name, description: pl.description ?? "" })}
             className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
