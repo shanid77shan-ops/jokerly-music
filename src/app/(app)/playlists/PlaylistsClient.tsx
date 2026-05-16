@@ -484,6 +484,13 @@ export default function PlaylistsClient() {
             onTracksAdded={() => fetchTracks(selectedPlaylist.id)}
           />
         )}
+        {exportModal && (
+          <ExportToYouTubeMusicModal
+            title={pl.name}
+            tracks={tracks.map((t) => ({ name: t.track_name, artist: t.track_artist || "" }))}
+            onClose={() => setExportModal(false)}
+          />
+        )}
       </div>
     );
   }
