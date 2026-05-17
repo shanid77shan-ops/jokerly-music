@@ -635,13 +635,6 @@ export default function PlaylistsClient() {
       )}
 
       {addModal && <AddToPlaylistModal track={addModal} onClose={() => setAddModal(null)} />}
-      {exportModal && selectedId && (
-        <ExportToYouTubeMusicModal
-          title={playlists.find((p) => p.id === selectedId)?.name || "Playlist"}
-          tracks={(tracksMap[selectedId] || []).map((t) => ({ name: t.track_name, artist: t.track_artist || "" }))}
-          onClose={() => setExportModal(false)}
-        />
-      )}
       {selectedArtist && <ArtistSheet artist={selectedArtist} onClose={() => setSelectedArtist(null)} />}
     </div>
   );
