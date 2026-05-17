@@ -105,9 +105,17 @@ async function performYtmSearch(cookieString: string, query: string) {
 }
 
 export async function authenticateYtm(cookieString: string) {
-  const ytm = new YouTubeMusic();
-  const ytma = await ytm.authenticate(cookieString);
-  return ytma;
+  try {
+    const ytm = new YouTubeMusic();
+    const ytma = await ytm.authenticate(cookieString);
+    if (!ytma) {
+      throw new Error("Authentication returned null");
+    }
+    return ytma;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(`YouTube Music authentication failed: ${msg}`);
+  }
 }
 
 export async function createYTPlaylist(
@@ -116,12 +124,17 @@ export async function createYTPlaylist(
   playlistDescription: string,
   privacy: YTMPrivacy = "PRIVATE"
 ) {
-  const ytma = await authenticateYtm(cookieString);
-  const playlist = await ytma.createPlaylist(playlistName, playlistDescription, privacy);
-  if (!playlist?.id) {
-    throw new Error("Failed to create YouTube Music playlist");
+  try {
+    const ytma = await authenticateYtm(cookieString);
+    const playlist = await ytma.createPlaylist(playlistName, playlistDescription, privacy);
+    if (!playlist?.id) {
+      throw new Error("Playlist creation returned no ID");
+    }
+    return playlist;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to create YouTube Music playlist: ${msg}`);
   }
-  return playlist;
 }
 
 export async function resolveTrackIds(
@@ -155,21 +168,30 @@ export async function migrateTracksToYTPlaylist(
   tracks: YTMTrackSearchPayload[],
   privacy: YTMPrivacy = "PRIVATE"
 ): Promise<YTMPlaylistCreateResult> {
-  const playlist = await createYTPlaylist(cookieString, playlistName, playlistDescription, privacy);
-  const { results, warnings } = await resolveTrackIds(cookieString, tracks);
+  try {
+    const playlist = await createYTPlaylist(cookieString, playlistName, playlistDescription, privacy);
+    const { results, warnings } = await resolveTrackIds(cookieString, tracks);
 
-  if (results.length > 0) {
-    const ytma = await authenticateYtm(cookieString);
-    const trackDetails = results.map(({ videoId }) => ({ id: videoId }));
-    await ytma.addTracksToPlaylist(playlist.id!, ...trackDetails);
+    if (results.length > 0) {
+      try {
+        const ytma = await authenticateYtm(cookieString);
+        const trackDetails = results.map(({ videoId }) => ({ id: videoId }));
+        await ytma.addTracksToPlaylist(playlist.id!, ...trackDetails);
+      } catch (addError) {
+        warnings.push(`Failed to add tracks to playlist: ${addError instanceof Error ? addError.message : String(addError)}`);
+      }
+    }
+
+    return {
+      playlistId: playlist.id!,
+      name: playlist.name ?? playlistName,
+      description: playlistDescription,
+      privacy,
+      addedTrackCount: results.length,
+      warnings,
+    };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(msg);
   }
-
-  return {
-    playlistId: playlist.id!,
-    name: playlist.name ?? playlistName,
-    description: playlistDescription,
-    privacy,
-    addedTrackCount: results.length,
-    warnings,
-  };
 }
