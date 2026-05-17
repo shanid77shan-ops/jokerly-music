@@ -35,6 +35,14 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[YouTube Music Export Error]", errorMessage, error);
+    // If the underlying library returned a 401, return a clear authentication error
+    if (errorMessage.includes("401") || /auth|unauthor/i.test(errorMessage)) {
+      return NextResponse.json(
+        { error: "Authentication failed: please paste the full Cookie header value from music.youtube.com (copy Request → Headers → Cookie in DevTools)" },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }

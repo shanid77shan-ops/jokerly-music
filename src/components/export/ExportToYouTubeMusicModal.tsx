@@ -84,7 +84,7 @@ export default function ExportToYouTubeMusicModal({ title, tracks, onClose }: Pr
   };
 
   const copyGuideText =
-    "1. Go to https://music.youtube.com\n2. Open DevTools (F12)\n3. Go to Application > Cookies\n4. Copy the value of '__Secure-1PAPISID' cookie\n5. Paste it here";
+    "1. Go to https://music.youtube.com\n2. Open DevTools (F12)\n3. Open the Network tab and click any request to music.youtube.com\n4. Under Request Headers find the 'Cookie' header and copy its entire value\n5. Paste the full Cookie header value here (looks like name=value; name2=value2)";
 
   return (
     <div
@@ -126,7 +126,7 @@ export default function ExportToYouTubeMusicModal({ title, tracks, onClose }: Pr
                 <textarea
                   value={cookieString}
                   onChange={(e) => setCookieString(e.target.value)}
-                  placeholder="Paste __Secure-1PAPISID cookie here..."
+                  placeholder="Paste full Cookie header value here..."
                   className="w-full px-3 py-2.5 rounded-xl text-sm border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.05] focus:bg-white/[0.08] focus:border-white/[0.15] text-white placeholder-white/25 resize-none focus:outline-none transition-colors"
                   rows={4}
                 />
