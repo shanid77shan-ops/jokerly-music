@@ -59,12 +59,9 @@ export default function PlayerBar() {
     stop,
     setRepeatMode,
     toggleShuffle,
-    setCrossfadeEnabled,
-    setCrossfadeSeconds,
     setVolume,
     setSleepTimer,
     getNextIndex,
-    getPrevIndex,
   } = usePlayerStore();
 
   const { load: loadLikes, songUris, toggleSong } = useLikesStore();
@@ -227,7 +224,10 @@ export default function PlayerBar() {
     if (!endedToken) return;
     const nextIndex = getNextIndex();
     if (nextIndex === null) return;
-    fetchAndPlay(nextIndex);
+    const id = window.setTimeout(() => {
+      fetchAndPlay(nextIndex);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [endedToken, fetchAndPlay, getNextIndex]);
 
   useEffect(() => {
@@ -311,8 +311,7 @@ export default function PlayerBar() {
     if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
     navigator.mediaSession.setActionHandler("play", () => togglePlay());
     navigator.mediaSession.setActionHandler("pause", () => {
-      if (!ensurePlayingForAction("pause")) return;
-      togglePlay();
+      if (usePlayerStore.getState().isPlaying) togglePlay();
     });
     navigator.mediaSession.setActionHandler("previoustrack", () => {
       handlePrevTrack();
@@ -333,11 +332,16 @@ export default function PlayerBar() {
 
   // Sleep timer countdown
   useEffect(() => {
-    if (!sleepTimerEndsAt) { setTimerRemaining(null); return; }
+    if (!sleepTimerEndsAt) {
+      const id = window.setTimeout(() => setTimerRemaining(null), 0);
+      return () => window.clearTimeout(id);
+    }
     const tick = () => {
       const diff = sleepTimerEndsAt - Date.now();
       if (diff <= 0) {
-        usePlayerStore.getState().togglePlay();
+        if (usePlayerStore.getState().isPlaying) {
+          usePlayerStore.getState().togglePlay();
+        }
         usePlayerStore.getState().setSleepTimer(null);
         setTimerRemaining(null);
         return;
@@ -346,9 +350,12 @@ export default function PlayerBar() {
       const s = Math.floor((diff % 60_000) / 1000);
       setTimerRemaining(`${m}:${String(s).padStart(2, "0")}`);
     };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    const initialId = window.setTimeout(tick, 0);
+    const intervalId = setInterval(tick, 1000);
+    return () => {
+      window.clearTimeout(initialId);
+      clearInterval(intervalId);
+    };
   }, [sleepTimerEndsAt]);
 
   if (sdkError && !currentTrack) {
@@ -356,7 +363,7 @@ export default function PlayerBar() {
       <div className="fixed bottom-16 sm:bottom-0 left-0 right-0 z-40 border-t border-white/[0.07] px-4 py-3 flex items-center justify-between gap-3"
         style={{ background: "rgba(7,5,18,0.97)", backdropFilter: "blur(20px)" }}>
         <p className="text-[#E8282B] text-sm truncate">{sdkError}</p>
-        {sdkError.includes("Premium") || sdkError.includes("auth") ? null : (
+        {sdkError.includes("Premium") ? null : (
           <button onClick={() => signOut({ callbackUrl: "/login" })}
             className="shrink-0 text-xs bg-[#E8282B] text-white px-3 py-1.5 rounded-xl font-medium">
             Re-login
@@ -368,8 +375,6 @@ export default function PlayerBar() {
 
   if (!currentTrack) return null;
 
-  const prevIndex = getPrevIndex();
-  const nextIndex = getNextIndex();
   const progressRatio = durationMs > 0 ? Math.min(progressMs / durationMs, 1) : 0;
   const noTrackUri = currentTrack.uri === null;
   const RepeatIcon = repeatMode === "one" ? Repeat1 : Repeat;
