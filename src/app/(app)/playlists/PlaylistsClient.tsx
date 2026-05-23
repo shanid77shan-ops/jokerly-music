@@ -13,7 +13,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SpotifyPlaylist } from "@/types";
 import Image from "next/image";
-import { signIn } from "next-auth/react";
 import { useToastStore } from "@/store/toast";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
@@ -24,8 +23,6 @@ import { SpotifyArtist } from "@/types/spotify";
 import { useLikesStore } from "@/store/likes";
 import SpotifyIcon from "@/components/icons/SpotifyIcon";
 import TransferResultDialog, { TransferResult } from "@/components/spotify/TransferResultDialog";
-
-const PENDING_PLAYLIST_TRANSFER_KEY = "jokerly-pending-playlist-transfer";
 
 interface EditState { id: string; name: string; description: string; }
 interface PinnedRow { playlist_id: string; }
@@ -372,7 +369,7 @@ export default function PlaylistsClient() {
     }
   };
 
-  const transferPlaylistToSpotify = useCallback(async (pl: SpotifyPlaylist, allowReauth = true) => {
+  const transferPlaylistToSpotify = useCallback(async (pl: SpotifyPlaylist) => {
     setTransferringPlaylistId(pl.id);
     try {
       const res = await fetch("/api/spotify/transfer", {
@@ -382,13 +379,7 @@ export default function PlaylistsClient() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) {
-        if (!allowReauth) {
-          throw new Error(data.error || "Spotify permissions were not refreshed. Please try signing in again.");
-        }
-        sessionStorage.setItem(PENDING_PLAYLIST_TRANSFER_KEY, pl.id);
-        toast(data.error || "Spotify permissions need to be refreshed", "info");
-        await signIn("spotify", { callbackUrl: window.location.href }, { show_dialog: "true" });
-        return;
+        throw new Error(data.error || "Spotify session needs to be refreshed. Sign in again once, then retry transfer.");
       }
       if (!res.ok) throw new Error(data.error || "Could not transfer playlist");
 
@@ -413,20 +404,7 @@ export default function PlaylistsClient() {
     } finally {
       setTransferringPlaylistId(null);
     }
-  }, [toast]);
-
-  useEffect(() => {
-    if (loading || transferringPlaylistId) return;
-    const playlistId = sessionStorage.getItem(PENDING_PLAYLIST_TRANSFER_KEY);
-    if (!playlistId) return;
-    const playlist = playlists.find((item) => item.id === playlistId);
-    if (!playlist) return;
-    sessionStorage.removeItem(PENDING_PLAYLIST_TRANSFER_KEY);
-    const id = window.setTimeout(() => {
-      void transferPlaylistToSpotify(playlist, false);
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [loading, playlists, transferPlaylistToSpotify, transferringPlaylistId]);
+  }, []);
 
   // ── Detail view ─────────────────────────────────────────────────────────
   if (selectedId && selectedPlaylist) {

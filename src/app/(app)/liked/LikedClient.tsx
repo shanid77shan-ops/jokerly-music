@@ -4,22 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { Heart, Music, Mic2, Play, Trash2, Loader2, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { useLikesStore, LikedSong, LikedArtist } from "@/store/likes";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import ArtistSheet from "@/components/music/ArtistSheet";
 import { SpotifyArtist } from "@/types/spotify";
-import { useToastStore } from "@/store/toast";
 import SpotifyIcon from "@/components/icons/SpotifyIcon";
 import TransferResultDialog, { TransferResult } from "@/components/spotify/TransferResultDialog";
-
-const PENDING_LIKED_TRANSFER_KEY = "jokerly-pending-liked-transfer";
 
 export default function LikedClient() {
   const router = useRouter();
   const { songs, artists, loaded, load, toggleSong, toggleArtist } = useLikesStore();
   const { setQueueAndPlay } = usePlayerStore();
-  const { toast } = useToastStore();
   const [tab, setTab] = useState<"songs" | "artists">("songs");
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
   const [transferring, setTransferring] = useState(false);
@@ -56,7 +51,7 @@ export default function LikedClient() {
     } as SpotifyArtist);
   };
 
-  const transferLikedToSpotify = useCallback(async (allowReauth = true) => {
+  const transferLikedToSpotify = useCallback(async () => {
     if (songs.length === 0 && artists.length === 0) {
       setTransferResult({
         type: "error",
@@ -75,13 +70,7 @@ export default function LikedClient() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) {
-        if (!allowReauth) {
-          throw new Error(data.error || "Spotify permissions were not refreshed. Please try signing in again.");
-        }
-        sessionStorage.setItem(PENDING_LIKED_TRANSFER_KEY, "1");
-        toast(data.error || "Spotify permissions need to be refreshed", "info");
-        await signIn("spotify", { callbackUrl: window.location.href }, { show_dialog: "true" });
-        return;
+        throw new Error(data.error || "Spotify session needs to be refreshed. Sign in again once, then retry transfer.");
       }
       if (!res.ok) throw new Error(data.error || "Could not transfer liked items");
 
@@ -103,17 +92,7 @@ export default function LikedClient() {
     } finally {
       setTransferring(false);
     }
-  }, [artists.length, songs.length, toast]);
-
-  useEffect(() => {
-    if (!loaded || transferring) return;
-    if (sessionStorage.getItem(PENDING_LIKED_TRANSFER_KEY) !== "1") return;
-    sessionStorage.removeItem(PENDING_LIKED_TRANSFER_KEY);
-    const id = window.setTimeout(() => {
-      void transferLikedToSpotify(false);
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [loaded, transferring, transferLikedToSpotify]);
+  }, [artists.length, songs.length]);
 
   return (
     <div className="w-full space-y-5">

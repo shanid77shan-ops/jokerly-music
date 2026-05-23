@@ -73,7 +73,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return {
           ...token,
           accessToken: account.access_token,
-          refreshToken: account.refresh_token,
+          refreshToken: account.refresh_token ?? (token as SpotifyToken).refreshToken,
           accessTokenExpires: account.expires_at ? account.expires_at * 1000 : Date.now() + 3600 * 1000,
           spotifyId: account.providerAccountId,
         };
