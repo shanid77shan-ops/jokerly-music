@@ -13,7 +13,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SpotifyPlaylist } from "@/types";
 import Image from "next/image";
-import { signIn } from "next-auth/react";
 import { useToastStore } from "@/store/toast";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
@@ -22,20 +21,11 @@ import ExportToYouTubeMusicModal from "@/components/export/ExportToYouTubeMusicM
 import ArtistSheet from "@/components/music/ArtistSheet";
 import { SpotifyArtist } from "@/types/spotify";
 import { useLikesStore } from "@/store/likes";
-import { SPOTIFY_SCOPES } from "@/lib/spotify-scopes";
-import SpotifyIcon from "../../../components/icons/SpotifyIcon";
 
 interface EditState { id: string; name: string; description: string; }
 interface PinnedRow { playlist_id: string; }
 interface PlaylistTrack { id: string; track_uri: string; track_name: string; track_image?: string | null; track_artist?: string | null; added_at: string; position: number; }
 interface PinnedArtist { id: string; artist_id: string; artist_name: string; artist_image: string; }
-interface SpotifyExportResponse { url?: string; error?: string; message?: string; reauthRequired?: boolean; }
-
-function spotifyTrackIdFromUri(uri: string) {
-  const prefix = "spotify:track:";
-  const trimmed = uri.trim();
-  return trimmed.startsWith(prefix) ? trimmed.slice(prefix.length) : trimmed;
-}
 
 // ── Sortable track row ──────────────────────────────────────────────────────
 function SortableTrackRow({
@@ -167,7 +157,6 @@ export default function PlaylistsClient() {
   const [addModal, setAddModal] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [addFromPlaylist, setAddFromPlaylist] = useState(false);
   const [exportModal, setExportModal] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [pinnedArtists, setPinnedArtists] = useState<PinnedArtist[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
   const { toast } = useToastStore();
@@ -376,46 +365,14 @@ export default function PlaylistsClient() {
     }
   };
 
-  const handleSpotifyExport = useCallback(async (playlist: SpotifyPlaylist, playlistTracks: PlaylistTrack[]) => {
-    setIsExporting(true);
-
+  const sharePlaylist = useCallback(async (playlistId: string) => {
     try {
-      const trackIds = playlistTracks.map((track) => spotifyTrackIdFromUri(track.track_uri));
-      if (trackIds.length === 0) throw new Error("Add at least one track before exporting to Spotify");
-
-      const res = await fetch("/api/playlists/export-spotify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: playlist.name,
-          trackIds,
-        }),
-      });
-
-      const data = (await res.json().catch(() => ({}))) as SpotifyExportResponse;
-
-      if (res.status === 403 && data.reauthRequired) {
-        toast(data.message ?? "Reconnect Spotify to approve playlist export permissions");
-        await signIn(
-          "spotify",
-          { callbackUrl: window.location.href },
-          { scope: SPOTIFY_SCOPES, show_dialog: "true" }
-        );
-        return;
-      }
-
-      if (!res.ok) {
-        throw new Error(data.message ?? data.error ?? "Could not export playlist to Spotify");
-      }
-
-      if (!data.url) throw new Error("Spotify did not return a playlist URL");
-
-      window.open(data.url, "_blank");
+      const url = `${window.location.origin}/playlist/${playlistId}`;
+      await navigator.clipboard.writeText(url);
+      toast("Copied to clipboard!");
     } catch (e) {
-      console.error("Spotify playlist export failed", e);
-      toast((e as Error).message ?? "Could not export playlist to Spotify");
-    } finally {
-      setIsExporting(false);
+      console.error("Could not copy playlist link", e);
+      toast("Could not copy playlist link");
     }
   }, [toast]);
 
@@ -448,11 +405,11 @@ export default function PlaylistsClient() {
             className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
             <Share2 size={15} />
           </button>
-          <button onClick={() => handleSpotifyExport(pl, tracks)} disabled={isExporting || tracks.length === 0}
-            title="Export playlist to Spotify"
-            className={`p-2 rounded-xl hover:bg-white/[0.07] transition-colors disabled:opacity-40 disabled:pointer-events-none ${isExporting ? "opacity-60 pointer-events-none" : ""}`}
-            style={{ color: "rgba(29,185,84,0.85)" }}>
-            {isExporting ? <Loader2 size={15} className="animate-spin" /> : <SpotifyIcon size={15} />}
+          <button onClick={() => sharePlaylist(pl.id)}
+            title="Copy public playlist link"
+            className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors"
+            style={{ color: "rgba(255,255,255,0.4)" }}>
+            <Share2 size={15} />
           </button>
           <button onClick={() => setEdit({ id: pl.id, name: pl.name, description: pl.description ?? "" })}
             className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
