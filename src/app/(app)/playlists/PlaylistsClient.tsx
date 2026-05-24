@@ -428,7 +428,7 @@ export default function PlaylistsClient() {
             <Share2 size={15} />
           </button>
           <button onClick={() => handleDownloadM3U(pl, tracks)} disabled={tracks.length === 0}
-            title="Download M3U playlist"
+            title="Download M3U for TuneMyMusic"
             className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors disabled:opacity-40 disabled:pointer-events-none"
             style={{ color: "rgba(255,255,255,0.4)" }}>
             <Download size={15} />
