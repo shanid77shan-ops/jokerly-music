@@ -13,7 +13,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SpotifyPlaylist } from "@/types";
 import Image from "next/image";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useToastStore } from "@/store/toast";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
@@ -144,6 +144,7 @@ function CoverArt({ tracks, imageUrl, name, size = 160 }: { tracks?: PlaylistTra
 
 // ── Main component ──────────────────────────────────────────────────────────
 export default function PlaylistsClient() {
+  const { data: session } = useSession();
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -382,9 +383,13 @@ export default function PlaylistsClient() {
   const transferPlaylistToSpotify = useCallback(async (pl: SpotifyPlaylist) => {
     setTransferringPlaylistId(pl.id);
     try {
+      const accessToken = (session as { accessToken?: string } | null)?.accessToken;
       const res = await fetch("/api/spotify/transfer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({ action: "playlist", playlistId: pl.id }),
       });
       const data = await res.json().catch(() => ({}));
@@ -425,7 +430,7 @@ export default function PlaylistsClient() {
     } finally {
       setTransferringPlaylistId(null);
     }
-  }, []);
+  }, [session]);
 
   // ── Detail view ─────────────────────────────────────────────────────────
   if (selectedId && selectedPlaylist) {

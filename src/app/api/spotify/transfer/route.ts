@@ -71,6 +71,13 @@ function errorStatus(error: unknown) {
   return 502;
 }
 
+function bearerTokenFromRequest(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice("Bearer ".length).trim();
+  return token.length > 0 ? token : null;
+}
+
 async function spotifyRequest<T>(path: string, accessToken: string, init: RequestInit = {}) {
   const res = await fetch(`${SPOTIFY_BASE}${path}`, {
     ...init,
@@ -186,6 +193,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Spotify sign-in required" }, { status: 401 });
   }
 
+  const spotifyAccessToken = bearerTokenFromRequest(req) ?? session.accessToken;
   const body = (await req.json()) as TransferBody;
   const supabase = await createClient();
 
@@ -203,7 +211,7 @@ export async function POST(req: NextRequest) {
     let followedArtistCount = 0;
 
     try {
-      savedSongCount = await retryWithFreshToken(req, session.accessToken, (token) =>
+      savedSongCount = await retryWithFreshToken(req, spotifyAccessToken, (token) =>
         saveLikedSongs(token, (songsResult.data ?? []) as LikedSongRow[])
       );
     } catch (error) {
@@ -215,7 +223,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      followedArtistCount = await retryWithFreshToken(req, session.accessToken, (token) =>
+      followedArtistCount = await retryWithFreshToken(req, spotifyAccessToken, (token) =>
         followLikedArtists(token, (artistsResult.data ?? []) as LikedArtistRow[])
       );
     } catch (error) {
@@ -244,7 +252,7 @@ export async function POST(req: NextRequest) {
     if (tracks.length === 0) return NextResponse.json({ error: "Playlist has no tracks to transfer" }, { status: 400 });
 
     try {
-      const created = await retryWithFreshToken(req, session.accessToken, (token) =>
+      const created = await retryWithFreshToken(req, spotifyAccessToken, (token) =>
         createSpotifyPlaylist(token, playlistResult.data as PlaylistRow, tracks, body.public ?? false)
       );
       return NextResponse.json({ ok: true, ...created });

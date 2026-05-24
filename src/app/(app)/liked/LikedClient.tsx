@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Heart, Music, Mic2, Play, Trash2, Loader2, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useLikesStore, LikedSong, LikedArtist } from "@/store/likes";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import ArtistSheet from "@/components/music/ArtistSheet";
@@ -15,6 +15,7 @@ import { SPOTIFY_SCOPES } from "@/lib/spotify-scopes";
 
 export default function LikedClient() {
   const router = useRouter();
+  const { data: session } = useSession();
   const { songs, artists, loaded, load, toggleSong, toggleArtist } = useLikesStore();
   const { setQueueAndPlay } = usePlayerStore();
   const [tab, setTab] = useState<"songs" | "artists">("songs");
@@ -73,9 +74,13 @@ export default function LikedClient() {
 
     setTransferring(true);
     try {
+      const accessToken = (session as { accessToken?: string } | null)?.accessToken;
       const res = await fetch("/api/spotify/transfer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({ action: "liked" }),
       });
       const data = await res.json().catch(() => ({}));
@@ -113,7 +118,7 @@ export default function LikedClient() {
     } finally {
       setTransferring(false);
     }
-  }, [artists.length, songs.length]);
+  }, [artists.length, session, songs.length]);
 
   return (
     <div className="w-full space-y-5">
