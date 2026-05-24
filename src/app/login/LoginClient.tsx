@@ -11,7 +11,11 @@ export default function LoginClient() {
 
   const handleLogin = async () => {
     setLoading(true);
-    await signIn("spotify", { callbackUrl: "/" }, { scope: SPOTIFY_SCOPES });
+    await signIn(
+      "spotify",
+      { callbackUrl: `${window.location.origin}/` },
+      { scope: SPOTIFY_SCOPES }
+    );
   };
 
   return (
