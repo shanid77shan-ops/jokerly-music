@@ -13,7 +13,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SpotifyPlaylist } from "@/types";
 import Image from "next/image";
-import { signIn, useSession } from "next-auth/react";
 import { useToastStore } from "@/store/toast";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
@@ -23,13 +22,18 @@ import ArtistSheet from "@/components/music/ArtistSheet";
 import { SpotifyArtist } from "@/types/spotify";
 import { useLikesStore } from "@/store/likes";
 import SpotifyIcon from "@/components/icons/SpotifyIcon";
-import TransferResultDialog, { TransferResult } from "@/components/spotify/TransferResultDialog";
-import { SPOTIFY_SCOPES } from "@/lib/spotify-scopes";
 
 interface EditState { id: string; name: string; description: string; }
 interface PinnedRow { playlist_id: string; }
 interface PlaylistTrack { id: string; track_uri: string; track_name: string; track_image?: string | null; track_artist?: string | null; added_at: string; position: number; }
 interface PinnedArtist { id: string; artist_id: string; artist_name: string; artist_image: string; }
+interface SpotifyExportResponse { url?: string; error?: string; message?: string; }
+
+function spotifyTrackIdFromUri(uri: string) {
+  const prefix = "spotify:track:";
+  const trimmed = uri.trim();
+  return trimmed.startsWith(prefix) ? trimmed.slice(prefix.length) : trimmed;
+}
 
 // ── Sortable track row ──────────────────────────────────────────────────────
 function SortableTrackRow({
@@ -144,7 +148,6 @@ function CoverArt({ tracks, imageUrl, name, size = 160 }: { tracks?: PlaylistTra
 
 // ── Main component ──────────────────────────────────────────────────────────
 export default function PlaylistsClient() {
-  const { data: session } = useSession();
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -162,8 +165,7 @@ export default function PlaylistsClient() {
   const [addModal, setAddModal] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [addFromPlaylist, setAddFromPlaylist] = useState(false);
   const [exportModal, setExportModal] = useState(false);
-  const [transferringPlaylistId, setTransferringPlaylistId] = useState<string | null>(null);
-  const [transferResult, setTransferResult] = useState<TransferResult | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [pinnedArtists, setPinnedArtists] = useState<PinnedArtist[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
   const { toast } = useToastStore();
@@ -175,14 +177,6 @@ export default function PlaylistsClient() {
   );
 
   const selectedPlaylist = playlists.find((p) => p.id === selectedId) ?? null;
-
-  const continueWithSpotify = useCallback(() => {
-    void signIn(
-      "spotify",
-      { callbackUrl: window.location.href },
-      { scope: SPOTIFY_SCOPES, show_dialog: "true" }
-    );
-  }, []);
 
   const handleDragEnd = (event: DragEndEvent, playlistId: string) => {
     const { active, over } = event;
@@ -380,57 +374,38 @@ export default function PlaylistsClient() {
     }
   };
 
-  const transferPlaylistToSpotify = useCallback(async (pl: SpotifyPlaylist) => {
-    setTransferringPlaylistId(pl.id);
-    try {
-      const accessToken = (session as { accessToken?: string } | null)?.accessToken;
-      const res = await fetch("/api/spotify/transfer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({ action: "playlist", playlistId: pl.id }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 401) {
-        setTransferResult({
-          type: "error",
-          title: "Spotify Permission Needed",
-          message: data.error || "Connect Spotify once to allow playlist transfer.",
-          details: data.error || "Spotify needs a one-time permission upgrade before transfer can continue.",
-          needsReauth: true,
-        });
-        return;
-      }
-      if (!res.ok) throw new Error(data.error || "Could not transfer playlist");
+  const handleSpotifyExport = useCallback(async (playlist: SpotifyPlaylist, playlistTracks: PlaylistTrack[]) => {
+    setIsExporting(true);
 
-      const skippedCount = data.skippedCount ?? 0;
-      setTransferResult({
-        type: "success",
-        title: "Transfer Successful",
-        message:
-          skippedCount > 0
-            ? `Transferred ${data.trackCount ?? 0} tracks to Spotify. ${skippedCount} local tracks were skipped.`
-            : `Transferred ${data.trackCount ?? 0} tracks to Spotify.`,
-        url: data.spotifyPlaylistUrl ?? null,
+    try {
+      const trackIds = playlistTracks.map((track) => spotifyTrackIdFromUri(track.track_uri));
+      if (trackIds.length === 0) throw new Error("Add at least one track before exporting to Spotify");
+
+      const res = await fetch("/api/playlists/export-spotify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: playlist.name,
+          trackIds,
+        }),
       });
+
+      const data = (await res.json().catch(() => ({}))) as SpotifyExportResponse;
+
+      if (!res.ok) {
+        throw new Error(data.message ?? data.error ?? "Could not export playlist to Spotify");
+      }
+
+      if (!data.url) throw new Error("Spotify did not return a playlist URL");
+
+      window.open(data.url, "_blank");
     } catch (e) {
-      const message = (e as Error).message || "Could not transfer playlist";
-      const needsReauth =
-        message.toLowerCase().includes("spotify") &&
-        (message.toLowerCase().includes("permission") || message.toLowerCase().includes("token"));
-      setTransferResult({
-        type: "error",
-        title: "Transfer Failed",
-        message,
-        details: message,
-        needsReauth,
-      });
+      console.error("Spotify playlist export failed", e);
+      toast((e as Error).message ?? "Could not export playlist to Spotify");
     } finally {
-      setTransferringPlaylistId(null);
+      setIsExporting(false);
     }
-  }, [session]);
+  }, [toast]);
 
   // ── Detail view ─────────────────────────────────────────────────────────
   if (selectedId && selectedPlaylist) {
@@ -461,10 +436,11 @@ export default function PlaylistsClient() {
             className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
             <Share2 size={15} />
           </button>
-          <button onClick={() => transferPlaylistToSpotify(pl)} disabled={transferringPlaylistId === pl.id || tracks.length === 0}
-            title="Transfer playlist to Spotify"
-            className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors disabled:opacity-40" style={{ color: "rgba(29,185,84,0.85)" }}>
-            {transferringPlaylistId === pl.id ? <Loader2 size={15} className="animate-spin" /> : <SpotifyIcon size={15} />}
+          <button onClick={() => handleSpotifyExport(pl, tracks)} disabled={isExporting || tracks.length === 0}
+            title="Export playlist to Spotify"
+            className={`p-2 rounded-xl hover:bg-white/[0.07] transition-colors disabled:opacity-40 disabled:pointer-events-none ${isExporting ? "opacity-60 pointer-events-none" : ""}`}
+            style={{ color: "rgba(29,185,84,0.85)" }}>
+            {isExporting ? <Loader2 size={15} className="animate-spin" /> : <SpotifyIcon size={15} />}
           </button>
           <button onClick={() => setEdit({ id: pl.id, name: pl.name, description: pl.description ?? "" })}
             className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
@@ -566,13 +542,6 @@ export default function PlaylistsClient() {
             title={pl.name}
             tracks={tracks.map((t) => ({ name: t.track_name, artist: t.track_artist || "" }))}
             onClose={() => setExportModal(false)}
-          />
-        )}
-        {transferResult && (
-          <TransferResultDialog
-            result={transferResult}
-            onClose={() => setTransferResult(null)}
-            onReauthorize={continueWithSpotify}
           />
         )}
       </div>
@@ -720,13 +689,6 @@ export default function PlaylistsClient() {
 
       {addModal && <AddToPlaylistModal track={addModal} onClose={() => setAddModal(null)} />}
       {selectedArtist && <ArtistSheet artist={selectedArtist} onClose={() => setSelectedArtist(null)} />}
-      {transferResult && (
-        <TransferResultDialog
-          result={transferResult}
-          onClose={() => setTransferResult(null)}
-          onReauthorize={continueWithSpotify}
-        />
-      )}
     </div>
   );
 }
