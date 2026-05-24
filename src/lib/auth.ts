@@ -9,6 +9,7 @@ type SpotifyToken = JWT & {
   refreshToken?: string;
   accessTokenExpires?: number;
   spotifyId?: string;
+  spotifyScope?: string;
   error?: string;
 };
 
@@ -61,6 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           refreshToken: account.refresh_token ?? (token as SpotifyToken).refreshToken,
           accessTokenExpires: account.expires_at ? account.expires_at * 1000 : Date.now() + 3600 * 1000,
           spotifyId: account.providerAccountId,
+          spotifyScope: account.scope,
         };
       }
       const spotifyToken = token as SpotifyToken;
@@ -70,6 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       session.accessToken = token.accessToken as string;
       session.spotifyId = token.spotifyId as string;
+      session.spotifyScope = token.spotifyScope as string | undefined;
       session.error = token.error as string | undefined;
       return session;
     },

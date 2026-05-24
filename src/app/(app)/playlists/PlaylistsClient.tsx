@@ -13,6 +13,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SpotifyPlaylist } from "@/types";
 import Image from "next/image";
+import { signIn } from "next-auth/react";
 import { useToastStore } from "@/store/toast";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
@@ -21,13 +22,14 @@ import ExportToYouTubeMusicModal from "@/components/export/ExportToYouTubeMusicM
 import ArtistSheet from "@/components/music/ArtistSheet";
 import { SpotifyArtist } from "@/types/spotify";
 import { useLikesStore } from "@/store/likes";
-import SpotifyIcon from "@/components/icons/SpotifyIcon";
+import { SPOTIFY_SCOPES } from "@/lib/spotify-scopes";
+import SpotifyIcon from "../../../components/icons/SpotifyIcon";
 
 interface EditState { id: string; name: string; description: string; }
 interface PinnedRow { playlist_id: string; }
 interface PlaylistTrack { id: string; track_uri: string; track_name: string; track_image?: string | null; track_artist?: string | null; added_at: string; position: number; }
 interface PinnedArtist { id: string; artist_id: string; artist_name: string; artist_image: string; }
-interface SpotifyExportResponse { url?: string; error?: string; message?: string; }
+interface SpotifyExportResponse { url?: string; error?: string; message?: string; reauthRequired?: boolean; }
 
 function spotifyTrackIdFromUri(uri: string) {
   const prefix = "spotify:track:";
@@ -391,6 +393,16 @@ export default function PlaylistsClient() {
       });
 
       const data = (await res.json().catch(() => ({}))) as SpotifyExportResponse;
+
+      if (res.status === 403 && data.reauthRequired) {
+        toast(data.message ?? "Reconnect Spotify to approve playlist export permissions");
+        await signIn(
+          "spotify",
+          { callbackUrl: window.location.href },
+          { scope: SPOTIFY_SCOPES, show_dialog: "true" }
+        );
+        return;
+      }
 
       if (!res.ok) {
         throw new Error(data.message ?? data.error ?? "Could not export playlist to Spotify");

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { SPOTIFY_PLAYLIST_WRITE_SCOPES } from "@/lib/spotify-scopes";
 
 const SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1";
 const SPOTIFY_TRACK_ID_PATTERN = /^[A-Za-z0-9]{22}$/;
@@ -15,24 +16,32 @@ type SpotifyPlaylistResponse = {
   };
 };
 
-type SpotifyErrorResponse = {
-  error?: {
-    message?: string;
-  };
-  message?: string;
-};
-
 function jsonError(error: string, status: number, message?: string) {
   return Response.json({ error, ...(message ? { message } : {}) }, { status });
 }
 
-async function readSpotifyError(response: Response): Promise<string> {
+function spotifyErrorResponse(error: string, status: number, errorBody: string) {
+  return Response.json(
+    {
+      error,
+      message: errorBody || `Spotify API returned ${status}`,
+      reauthRequired: status === 401 || status === 403,
+    },
+    { status }
+  );
+}
+
+async function readSpotifyErrorBody(response: Response): Promise<string> {
   try {
-    const body = (await response.json()) as SpotifyErrorResponse;
-    return body.error?.message ?? body.message ?? response.statusText;
+    return await response.text();
   } catch {
     return response.statusText;
   }
+}
+
+function hasPlaylistWriteScopes(scope?: string) {
+  const grantedScopes = new Set(scope?.split(/\s+/).filter(Boolean));
+  return SPOTIFY_PLAYLIST_WRITE_SCOPES.every((requiredScope) => grantedScopes.has(requiredScope));
 }
 
 export async function POST(request: Request) {
@@ -40,6 +49,13 @@ export async function POST(request: Request) {
 
   if (!session?.accessToken || !session?.spotifyId) {
     return jsonError("Unauthorized", 401);
+  }
+
+  if (!hasPlaylistWriteScopes(session.spotifyScope)) {
+    console.warn(
+      "Spotify playlist export running without confirmed playlist write scopes:",
+      session.spotifyScope ?? "(no scopes on session)"
+    );
   }
 
   let payload: ExportSpotifyPayload;
@@ -67,25 +83,31 @@ export async function POST(request: Request) {
   const trackUris = rawTrackIds.map((trackId) => `spotify:track:${trackId.trim()}`);
 
   try {
+    const createPlaylistUrl = `${SPOTIFY_API_BASE_URL}/users/${session.spotifyId}/playlists`;
+    const createPlaylistBody = {
+      name,
+      description: "Exported from Jokerly",
+      public: false,
+      collaborative: false,
+    };
+
     const createPlaylistResponse = await fetch(
-      `${SPOTIFY_API_BASE_URL}/users/${encodeURIComponent(session.spotifyId)}/playlists`,
+      createPlaylistUrl,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name,
-          description: "Exported from Jokerly",
-          public: false,
-        }),
+        body: JSON.stringify(createPlaylistBody),
+        cache: "no-store",
       }
     );
 
     if (!createPlaylistResponse.ok) {
-      const message = await readSpotifyError(createPlaylistResponse);
-      return jsonError("Failed to create Spotify playlist", createPlaylistResponse.status, message);
+      const errorBody = await readSpotifyErrorBody(createPlaylistResponse);
+      console.error("Spotify API Error Details:", createPlaylistResponse.status, errorBody);
+      return spotifyErrorResponse("Failed to create Spotify playlist", createPlaylistResponse.status, errorBody);
     }
 
     const playlist = (await createPlaylistResponse.json()) as SpotifyPlaylistResponse;
@@ -103,12 +125,14 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ uris: trackUris }),
+        cache: "no-store",
       }
     );
 
     if (!addTracksResponse.ok) {
-      const message = await readSpotifyError(addTracksResponse);
-      return jsonError("Failed to add tracks to Spotify playlist", addTracksResponse.status, message);
+      const errorBody = await readSpotifyErrorBody(addTracksResponse);
+      console.error("Spotify API Error Details:", addTracksResponse.status, errorBody);
+      return spotifyErrorResponse("Failed to add tracks to Spotify playlist", addTracksResponse.status, errorBody);
     }
 
     const spotifyUrl = playlist.external_urls?.spotify;
