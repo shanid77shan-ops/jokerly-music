@@ -17,6 +17,7 @@ import { useToastStore } from "@/store/toast";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import AddFromPlaylistModal from "@/components/playlist/AddFromPlaylistModal";
+import CreateMultiArtistPlaylistSheet from "@/components/playlist/CreateMultiArtistPlaylistSheet";
 import ArtistSheet from "@/components/music/ArtistSheet";
 import { SpotifyArtist } from "@/types/spotify";
 import { useLikesStore } from "@/store/likes";
@@ -25,8 +26,6 @@ interface EditState { id: string; name: string; description: string; }
 interface PinnedRow { playlist_id: string; }
 interface PlaylistTrack { id: string; track_uri: string; track_name: string; track_image?: string | null; track_artist?: string | null; added_at: string; position: number; }
 interface PinnedArtist { id: string; artist_id: string; artist_name: string; artist_image: string; }
-interface SelectedArtist { id: string; name: string; image?: string | null; }
-interface ArtistSearchResponse { artists?: SpotifyArtist[]; error?: string; }
 
 // ── Sortable track row ──────────────────────────────────────────────────────
 function SortableTrackRow({
@@ -144,12 +143,9 @@ export default function PlaylistsClient() {
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [showArtistMixSheet, setShowArtistMixSheet] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
-  const [artistQuery, setArtistQuery] = useState("");
-  const [artistResults, setArtistResults] = useState<SpotifyArtist[]>([]);
-  const [selectedArtists, setSelectedArtists] = useState<SelectedArtist[]>([]);
-  const [searchingArtists, setSearchingArtists] = useState(false);
   const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState<EditState | null>(null);
   const [pinned, setPinned] = useState<Set<string>>(new Set());
@@ -164,7 +160,8 @@ export default function PlaylistsClient() {
   const [pinnedArtists, setPinnedArtists] = useState<PinnedArtist[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
   const { toast } = useToastStore();
-  const { setQueueAndPlay } = usePlayerStore();
+  const { setQueueAndPlay, currentTrack } = usePlayerStore();
+  const hasPlayer = currentTrack !== null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -272,38 +269,56 @@ export default function PlaylistsClient() {
     setQueueAndPlay(queue, index);
   };
 
-  const searchArtists = async () => {
-    const query = artistQuery.trim();
-    if (!query) return;
-
-    setSearchingArtists(true);
+  const createPlaylist = async () => {
+    if (!newName.trim()) return;
+    setSaving(true);
     try {
-      const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(query)}&type=artist&limit=5`);
-      const data = (await res.json().catch(() => ({}))) as ArtistSearchResponse;
-      if (!res.ok) throw new Error(data.error ?? "Could not search artists");
-      setArtistResults(data.artists ?? []);
+      const res = await fetch("/api/spotify/playlists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName.trim(), description: newDesc.trim() }),
+      });
+      const created = (await res.json().catch(() => ({}))) as SpotifyPlaylist & { error?: string };
+      if (!res.ok) throw new Error(created.error ?? "Failed to create playlist");
+
+      setPlaylists((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
+      setTracksMap((prev) => ({ ...prev, [created.id]: prev[created.id] ?? [] }));
+      toast("Playlist created");
+      setNewName(""); setNewDesc(""); setCreating(false);
     } catch (e) {
-      toast((e as Error).message ?? "Could not search artists");
-      setArtistResults([]);
+      toast((e as Error).message ?? "Could not create playlist");
     } finally {
-      setSearchingArtists(false);
+      setSaving(false);
     }
   };
 
-  const addArtist = (artist: SpotifyArtist) => {
-    setSelectedArtists((prev) => {
-      if (prev.find((a) => a.id === artist.id)) return prev;
-      return [...prev, { id: artist.id, name: artist.name, image: artist.images?.[0]?.url ?? null }];
-    });
-    setArtistResults((prev) => prev.filter((item) => item.id !== artist.id));
-    toast(`Added [${artist.name}]`);
+  const handleArtistMixCreated = (playlist: SpotifyPlaylist, addedCount: number) => {
+    setPlaylists((prev) => [playlist, ...prev.filter((p) => p.id !== playlist.id)]);
+    setTracksMap((prev) => ({ ...prev, [playlist.id]: prev[playlist.id] ?? [] }));
+    if (addedCount > 0) void fetchTracks(playlist.id);
   };
 
-  const removeSelectedArtist = (artistId: string) => {
-    setSelectedArtists((prev) => prev.filter((artist) => artist.id !== artistId));
-  };
-
-  const removeTrack = async (playlistId: string, trackId: string) => {
+  const artistMixFab = (
+    <>
+      <button
+        type="button"
+        onClick={() => setShowArtistMixSheet(true)}
+        title="Mix artists into a playlist"
+        aria-label="Mix artists into a playlist"
+        className={`fixed right-4 z-[60] w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 ${
+          hasPlayer ? "bottom-[88px]" : "bottom-24"
+        }`}
+        style={{ background: "#E8282B", boxShadow: "0 4px 20px rgba(232,40,43,0.45)" }}
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </button>
+      <CreateMultiArtistPlaylistSheet
+        open={showArtistMixSheet}
+        onClose={() => setShowArtistMixSheet(false)}
+        onCreated={handleArtistMixCreated}
+      />
+    </>
+  );
     const key = `${playlistId}::${trackId}`;
     setRemovingTrack(key);
     try {

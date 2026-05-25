@@ -106,6 +106,10 @@ export async function getArtistTopTracks(artistId: string, accessToken: string) 
   return spotifyFetch(`${SPOTIFY_BASE}/artists/${artistId}/top-tracks?market=IN`, accessToken, 5000);
 }
 
+export async function getRelatedArtists(artistId: string, accessToken: string) {
+  return spotifyFetch(`${SPOTIFY_BASE}/artists/${artistId}/related-artists`, accessToken, 5000);
+}
+
 export async function getTracksByIds(ids: string[], accessToken: string) {
   const safeIds = ids.slice(0, 50).join(",");
   return spotifyFetch(`${SPOTIFY_BASE}/tracks?ids=${safeIds}`, accessToken);
