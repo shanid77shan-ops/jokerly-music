@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Heart, Music, Mic2, Play, Trash2, Loader2, ArrowLeft } from "lucide-react";
+import { Heart, Music, Mic2, Play, Trash2, Loader2, ArrowLeft, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
@@ -282,10 +282,15 @@ function ArtistsTab({ artists, onOpen, onUnlike }: {
             </div>
             <p className="text-xs font-semibold text-white text-center truncate w-full leading-tight">{a.artist_name}</p>
           </button>
-          <button onClick={() => onUnlike(a)}
-            title="Unlike"
-            className="absolute top-1 right-1 p-1.5 rounded-full bg-[#E8282B]/80 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
-            <Heart size={11} fill="white" />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onUnlike(a);
+            }}
+            title="Remove artist"
+            className="absolute top-1 right-1 p-1.5 rounded-full bg-black/70 border border-white/10 text-white/80 hover:text-red-400 hover:bg-red-500/20 transition-colors shadow-md"
+          >
+            <X size={11} />
           </button>
         </div>
       ))}

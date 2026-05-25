@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Mic2, Plus, Search, Users, X } from "lucide-react";
 import Image from "next/image";
+import { formatMixDescription } from "@/lib/playlist-meta";
 import { SpotifyPlaylist } from "@/types";
 import { SpotifyArtist, artistImage } from "@/types/spotify";
 import { useToastStore } from "@/store/toast";
@@ -54,39 +55,45 @@ export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreate
 
     clearTimeout(searchTimer.current);
     const query = artistQuery.trim();
+    const selectedIds = new Set(selectedArtists.map((artist) => artist.id));
 
-    if (selectedArtists.length === 0 && query.length < 2) {
-      setArtistResults([]);
-      setSearching(false);
-      return;
+    if (query.length < 2) {
+      if (selectedArtists.length === 0) {
+        setArtistResults([]);
+        setSearching(false);
+        return;
+      }
+
+      setSearching(true);
+      searchTimer.current = setTimeout(async () => {
+        try {
+          const ids = selectedArtists.map((artist) => artist.id).join(",");
+          const res = await fetch(
+            `/api/spotify/artist/related?ids=${encodeURIComponent(ids)}&exclude=${encodeURIComponent(ids)}`
+          );
+          const data = (await res.json().catch(() => ({}))) as { artists?: SpotifyArtist[]; error?: string };
+          if (!res.ok) throw new Error(data.error ?? "Could not load related artists");
+          setArtistResults((data.artists ?? []).filter((artist) => !selectedIds.has(artist.id)));
+        } catch (e) {
+          toast((e as Error).message ?? "Could not load artists");
+          setArtistResults([]);
+        } finally {
+          setSearching(false);
+        }
+      }, 250);
+
+      return () => clearTimeout(searchTimer.current);
     }
 
     setSearching(true);
     searchTimer.current = setTimeout(async () => {
       try {
-        if (selectedArtists.length > 0) {
-          const ids = selectedArtists.map((artist) => artist.id).join(",");
-          const exclude = selectedArtists.map((artist) => artist.id).join(",");
-          const res = await fetch(
-            `/api/spotify/artist/related?ids=${encodeURIComponent(ids)}&exclude=${encodeURIComponent(exclude)}`
-          );
-          const data = (await res.json().catch(() => ({}))) as { artists?: SpotifyArtist[]; error?: string };
-          if (!res.ok) throw new Error(data.error ?? "Could not load related artists");
-
-          let related = data.artists ?? [];
-          if (query) {
-            const lower = query.toLowerCase();
-            related = related.filter((artist) => artist.name.toLowerCase().includes(lower));
-          }
-          setArtistResults(related);
-        } else {
-          const res = await fetch(
-            `/api/spotify/search?q=${encodeURIComponent(query)}&type=artist&limit=10`
-          );
-          const data = (await res.json().catch(() => ({}))) as { artists?: SpotifyArtist[]; error?: string };
-          if (!res.ok) throw new Error(data.error ?? "Could not search artists");
-          setArtistResults(data.artists ?? []);
-        }
+        const res = await fetch(
+          `/api/spotify/search?q=${encodeURIComponent(query)}&type=artist&limit=10`
+        );
+        const data = (await res.json().catch(() => ({}))) as { artists?: SpotifyArtist[]; error?: string };
+        if (!res.ok) throw new Error(data.error ?? "Could not search artists");
+        setArtistResults((data.artists ?? []).filter((artist) => !selectedIds.has(artist.id)));
       } catch (e) {
         toast((e as Error).message ?? "Could not load artists");
         setArtistResults([]);
@@ -120,7 +127,9 @@ export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreate
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          description: `Mix of ${selectedArtists.map((artist) => artist.name).join(", ")}`,
+          description: formatMixDescription(
+            selectedArtists.map((artist) => ({ id: artist.id, name: artist.name }))
+          ),
           selectedArtists: selectedArtists.map((artist) => ({ id: artist.id, name: artist.name })),
         }),
       });
@@ -147,10 +156,8 @@ export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreate
 
   if (!open) return null;
 
-  const showEmptyRelated =
-    selectedArtists.length > 0 && !searching && artistResults.length === 0;
-  const showEmptySearch =
-    selectedArtists.length === 0 && artistQuery.trim().length >= 2 && !searching && artistResults.length === 0;
+  const showEmptyResults =
+    !searching && artistResults.length === 0 && (artistQuery.trim().length >= 2 || selectedArtists.length > 0);
 
   return (
     <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center">
@@ -168,7 +175,7 @@ export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreate
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <div>
             <h2 className="text-white font-bold text-base">Mix artists</h2>
-            <p className="text-white/40 text-xs mt-0.5">Search, pick related artists, name your playlist</p>
+            <p className="text-white/40 text-xs mt-0.5">Pick artists, name your playlist, get a mixed tracklist</p>
           </div>
           <button
             type="button"
@@ -180,14 +187,25 @@ export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreate
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Playlist name"
-            className="w-full border text-white placeholder-white/25 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#E8282B]/60 transition-all"
+          <div
+            className="rounded-xl border px-4 py-3 space-y-2"
             style={{ background: "var(--card)", borderColor: "rgba(255,255,255,0.08)" }}
-          />
+          >
+            <label className="text-[11px] font-medium text-white/45">Playlist name</label>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="My mix"
+              className="w-full bg-transparent text-white placeholder-white/25 text-sm focus:outline-none"
+            />
+            {selectedArtists.length > 0 && (
+              <p className="text-xs text-white/50 truncate pt-0.5 border-t border-white/[0.06]">
+                <span className="text-white/35">Artists · </span>
+                {selectedArtists.map((artist) => artist.name).join(", ")}
+              </p>
+            )}
+          </div>
 
           {selectedArtists.length > 0 && (
             <div className="space-y-2">
@@ -200,7 +218,7 @@ export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreate
                     key={artist.id}
                     className="inline-flex items-center gap-1.5 rounded-full border border-[#E8282B]/25 bg-[#E8282B]/10 px-2.5 py-1 text-xs text-white"
                   >
-                    <span>[{artist.name}]</span>
+                    <span>{artist.name}</span>
                     <button
                       type="button"
                       onClick={() => removeArtist(artist.id)}
@@ -223,7 +241,7 @@ export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreate
               onChange={(e) => setArtistQuery(e.target.value)}
               placeholder={
                 selectedArtists.length > 0
-                  ? "Filter related artists…"
+                  ? "Search another artist…"
                   : "Search an artist to start…"
               }
               className="w-full pl-9 pr-4 py-3 rounded-2xl border border-white/[0.08] text-white placeholder-white/25 text-sm focus:outline-none focus:ring-1 focus:ring-[#E8282B]/50 transition-all"
@@ -235,9 +253,15 @@ export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreate
             )}
           </div>
 
-          {selectedArtists.length > 0 && (
+          {selectedArtists.length > 0 && !artistQuery.trim() && (
             <p className="text-[11px] text-white/35 -mt-2">
-              Showing artists related to your selection only
+              Suggested related artists — or search to add anyone
+            </p>
+          )}
+
+          {selectedArtists.length > 0 && artistQuery.trim().length >= 2 && (
+            <p className="text-[11px] text-white/35 -mt-2">
+              Artist search results
             </p>
           )}
 
@@ -288,15 +312,9 @@ export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreate
             </div>
           )}
 
-          {showEmptySearch && (
-            <p className="text-center text-white/30 text-sm py-4">No artists found</p>
-          )}
-
-          {showEmptyRelated && (
+          {showEmptyResults && (
             <p className="text-center text-white/30 text-sm py-4">
-              {artistQuery.trim()
-                ? "No related artists match that filter"
-                : "No related artists found — try another seed artist"}
+              {artistQuery.trim().length >= 2 ? "No artists found" : "No related suggestions — search to add more"}
             </p>
           )}
 
@@ -323,7 +341,7 @@ export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreate
               </>
             ) : (
               <>
-                <Check size={16} /> Create playlist
+                <Check size={16} /> Create mix
               </>
             )}
           </button>

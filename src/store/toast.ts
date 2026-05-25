@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { addLog } from "./debugLog";
 
 export type ToastType = "error" | "success" | "info";
 
@@ -19,7 +18,6 @@ export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
   toast: (message, type = "error") => {
     const id = `${Date.now()}-${Math.random()}`;
-    addLog(`[Toast] ${message}`, type === "error" ? "error" : type === "success" ? "info" : "info");
     set((s) => ({ toasts: [...s.toasts, { id, message, type }] }));
     setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 4000);
   },

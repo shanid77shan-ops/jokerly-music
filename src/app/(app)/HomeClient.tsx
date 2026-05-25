@@ -167,6 +167,7 @@ export default function HomeClient() {
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
   const [selectedAlbum, setSelectedAlbum] = useState<{ id: string; name: string; images: { url: string }[]; release_date: string; artists: { id: string; name: string; external_urls: { spotify: string } }[]; external_urls: { spotify: string }; total_tracks: number; album_type: string; uri: string } | null>(null);
   const [pinnedArtists, setPinnedArtists] = useState<PinnedArtist[]>([]);
+  const [removingPinnedArtist, setRemovingPinnedArtist] = useState<string | null>(null);
   const [pinnedAlbums, setPinnedAlbums] = useState<PinnedAlbum[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<RecentTrack[]>([]);
 
@@ -363,16 +364,27 @@ export default function HomeClient() {
     window.location.reload();
   };
 
+  const removePinnedArtist = async (artistId: string) => {
+    setRemovingPinnedArtist(artistId);
+    try {
+      const res = await fetch("/api/pinned-artists", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artist_id: artistId }),
+      });
+      if (!res.ok) throw new Error("Failed to remove artist");
+      setPinnedArtists((prev) => prev.filter((pa) => pa.artist_id !== artistId));
+      window.dispatchEvent(new CustomEvent("pinned-artists-updated"));
+    } finally {
+      setRemovingPinnedArtist(null);
+    }
+  };
+
   const toggleArtistPin = async (artist: SpotifyArtist) => {
     const alreadyPinned = pinnedArtists.some((pa) => pa.artist_id === artist.id);
     const img = artistImage(artist) ?? "";
     if (alreadyPinned) {
-      const res = await fetch("/api/pinned-artists", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ artist_id: artist.id }),
-      });
-      if (res.ok) setPinnedArtists((prev) => prev.filter((pa) => pa.artist_id !== artist.id));
+      await removePinnedArtist(artist.id);
     } else {
       const res = await fetch("/api/pinned-artists", {
         method: "POST",
@@ -734,24 +746,41 @@ export default function HomeClient() {
           </h3>
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
             {pinnedArtists.map((pa) => (
-              <button
-                key={pa.id}
-                onClick={() => setSelectedArtist({ id: pa.artist_id, name: pa.artist_name, images: pa.artist_image ? [{ url: pa.artist_image }] : [], followers: { total: 0 }, genres: [], external_urls: { spotify: "" }, popularity: 0, type: "artist", uri: "" } as SpotifyArtist)}
-                className="flex flex-col items-center gap-1.5 shrink-0 group"
-                style={{ width: 72 }}
-              >
-                <div className="relative w-16 h-16 rounded-full overflow-hidden bg-white/[0.06] ring-2 ring-white/[0.05] group-hover:ring-[#E8282B]/40 transition-all">
-                  {pa.artist_image ? (
-                    <Image src={pa.artist_image} alt={pa.artist_name} fill unoptimized sizes="64px" className="object-cover group-hover:scale-105 transition-transform duration-300" />
+              <div key={pa.id} className="relative shrink-0 group" style={{ width: 72 }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedArtist({ id: pa.artist_id, name: pa.artist_name, images: pa.artist_image ? [{ url: pa.artist_image }] : [], followers: { total: 0 }, genres: [], external_urls: { spotify: "" }, popularity: 0, type: "artist", uri: "" } as SpotifyArtist)}
+                  className="flex flex-col items-center gap-1.5 w-full"
+                >
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden bg-white/[0.06] ring-2 ring-white/[0.05] group-hover:ring-[#E8282B]/40 transition-all">
+                    {pa.artist_image ? (
+                      <Image src={pa.artist_image} alt={pa.artist_name} fill unoptimized sizes="64px" className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Mic2 size={18} className="text-white/20" />
+                      </div>
+                    )}
+                    <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
+                  </div>
+                  <p className="text-[10px] text-white/45 group-hover:text-white transition-colors text-center truncate w-full leading-tight">{pa.artist_name}</p>
+                </button>
+                <button
+                  type="button"
+                  title="Remove artist"
+                  disabled={removingPinnedArtist === pa.artist_id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void removePinnedArtist(pa.artist_id);
+                  }}
+                  className="absolute top-0 right-0 z-10 w-5 h-5 rounded-full bg-black/70 border border-white/10 text-white/70 hover:text-white hover:bg-red-500/80 flex items-center justify-center transition-colors disabled:opacity-40"
+                >
+                  {removingPinnedArtist === pa.artist_id ? (
+                    <Loader2 size={10} className="animate-spin" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Mic2 size={18} className="text-white/20" />
-                    </div>
+                    <X size={10} />
                   )}
-                  <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
-                </div>
-                <p className="text-[10px] text-white/45 group-hover:text-white transition-colors text-center truncate w-full leading-tight">{pa.artist_name}</p>
-              </button>
+                </button>
+              </div>
             ))}
           </div>
         </section>

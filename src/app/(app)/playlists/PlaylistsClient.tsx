@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ListMusic, Plus, Pencil, Pin, Loader2, Check, Trash2, Music, Play, Trash, PlayCircle, GripVertical, ListPlus, ArrowLeft, FolderInput, UserCircle2, Mic2, Heart, Download } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ListMusic, Plus, Pencil, Pin, Loader2, Check, Trash2, Music, Play, Trash, PlayCircle, GripVertical, ListPlus, ArrowLeft, FolderInput, UserCircle2, Mic2, Heart, Download, Users, X } from "lucide-react";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
   useSensor, useSensors, DragEndEvent,
@@ -18,9 +19,11 @@ import { usePlayerStore, PlayableTrack } from "@/store/player";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import AddFromPlaylistModal from "@/components/playlist/AddFromPlaylistModal";
 import CreateMultiArtistPlaylistSheet from "@/components/playlist/CreateMultiArtistPlaylistSheet";
+import EditMixArtistsSheet from "@/components/playlist/EditMixArtistsSheet";
 import ArtistSheet from "@/components/music/ArtistSheet";
 import { SpotifyArtist } from "@/types/spotify";
 import { useLikesStore } from "@/store/likes";
+import { isMixPlaylist, parseMixArtistRecords, parseMixArtists } from "@/lib/playlist-meta";
 
 interface EditState { id: string; name: string; description: string; }
 interface PinnedRow { playlist_id: string; }
@@ -157,11 +160,18 @@ export default function PlaylistsClient() {
   const [removingTrack, setRemovingTrack] = useState<string | null>(null);
   const [addModal, setAddModal] = useState<{ name: string; uri: string; image?: string | null; artist?: string | null } | null>(null);
   const [addFromPlaylist, setAddFromPlaylist] = useState(false);
+  const [editArtistsOpen, setEditArtistsOpen] = useState(false);
   const [pinnedArtists, setPinnedArtists] = useState<PinnedArtist[]>([]);
+  const [removingPinnedArtist, setRemovingPinnedArtist] = useState<string | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
+  const [mounted, setMounted] = useState(false);
   const { toast } = useToastStore();
-  const { setQueueAndPlay, currentTrack } = usePlayerStore();
+  const { setQueueAndPlay, currentTrack, isPlayerExpanded } = usePlayerStore();
   const hasPlayer = currentTrack !== null;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -292,33 +302,85 @@ export default function PlaylistsClient() {
     }
   };
 
-  const handleArtistMixCreated = (playlist: SpotifyPlaylist, addedCount: number) => {
+  const handleArtistMixCreated = async (playlist: SpotifyPlaylist, addedCount: number) => {
     setPlaylists((prev) => [playlist, ...prev.filter((p) => p.id !== playlist.id)]);
-    setTracksMap((prev) => ({ ...prev, [playlist.id]: prev[playlist.id] ?? [] }));
-    if (addedCount > 0) void fetchTracks(playlist.id);
+    setSelectedId(playlist.id);
+    await fetchTracks(playlist.id);
+    if (addedCount === 0) {
+      setTracksMap((prev) => ({ ...prev, [playlist.id]: [] }));
+    }
   };
 
-  const artistMixFab = (
-    <>
-      <button
-        type="button"
-        onClick={() => setShowArtistMixSheet(true)}
-        title="Mix artists into a playlist"
-        aria-label="Mix artists into a playlist"
-        className={`fixed right-4 z-[60] w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 ${
-          hasPlayer ? "bottom-[88px]" : "bottom-24"
-        }`}
-        style={{ background: "#E8282B", boxShadow: "0 4px 20px rgba(232,40,43,0.45)" }}
-      >
-        <Plus size={24} strokeWidth={2.5} />
-      </button>
-      <CreateMultiArtistPlaylistSheet
-        open={showArtistMixSheet}
-        onClose={() => setShowArtistMixSheet(false)}
-        onCreated={handleArtistMixCreated}
-      />
-    </>
-  );
+  const removePinnedArtist = async (artistId: string) => {
+    setRemovingPinnedArtist(artistId);
+    try {
+      const res = await fetch("/api/pinned-artists", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artist_id: artistId }),
+      });
+      if (!res.ok) throw new Error("Failed to remove artist");
+      setPinnedArtists((prev) => prev.filter((pa) => pa.artist_id !== artistId));
+      window.dispatchEvent(new CustomEvent("pinned-artists-updated"));
+      toast("Artist removed");
+    } catch (e) {
+      toast((e as Error).message ?? "Could not remove artist");
+    } finally {
+      setRemovingPinnedArtist(null);
+    }
+  };
+
+  const handleArtistsSaved = async (
+    playlistId: string,
+    artists: { id: string; name: string }[],
+    description: string,
+    addedCount: number,
+    removedCount: number
+  ) => {
+    setPlaylists((prev) =>
+      prev.map((p) =>
+        p.id === playlistId
+          ? {
+              ...p,
+              description,
+              tracks: {
+                total: Math.max(0, (p.tracks?.total ?? 0) + addedCount - removedCount),
+              },
+            }
+          : p
+      )
+    );
+    await fetchTracks(playlistId);
+  };
+
+  const fabBottomClass = isPlayerExpanded
+    ? "bottom-6"
+    : hasPlayer
+      ? "bottom-[152px]"
+      : "bottom-[72px]";
+
+  const artistMixFab =
+    mounted &&
+    createPortal(
+      <>
+        <button
+          type="button"
+          onClick={() => setShowArtistMixSheet(true)}
+          title="Mix artists into a playlist"
+          aria-label="Mix artists into a playlist"
+          className={`fixed right-4 z-[70] w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 pointer-events-auto ${fabBottomClass}`}
+          style={{ background: "#E8282B", boxShadow: "0 4px 20px rgba(232,40,43,0.45)" }}
+        >
+          <Plus size={24} strokeWidth={2.5} />
+        </button>
+        <CreateMultiArtistPlaylistSheet
+          open={showArtistMixSheet}
+          onClose={() => setShowArtistMixSheet(false)}
+          onCreated={handleArtistMixCreated}
+        />
+      </>,
+      document.body
+    );
   const removeTrack = async (playlistId: string, trackId: string) => {
     const key = `${playlistId}::${trackId}`;
     setRemovingTrack(key);
@@ -416,6 +478,9 @@ export default function PlaylistsClient() {
   // ── Detail view ─────────────────────────────────────────────────────────
   if (selectedId && selectedPlaylist) {
     const pl = selectedPlaylist;
+    const mixArtists = parseMixArtists(pl.description);
+    const mixArtistRecords = parseMixArtistRecords(pl.description);
+    const isMix = isMixPlaylist(pl.description);
     const isPinned = pinned.has(pl.id);
     const tracks = tracksMap[pl.id] ?? [];
     const isLoadingTracks = loadingTracks === pl.id;
@@ -436,6 +501,14 @@ export default function PlaylistsClient() {
             title="Add tracks from another playlist"
             className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
             <FolderInput size={15} />
+          </button>
+          <button
+            onClick={() => setEditArtistsOpen(true)}
+            title={isMix ? "Edit mix artists" : "Add artists to mix"}
+            className="p-2 rounded-xl hover:bg-white/[0.07] transition-colors"
+            style={{ color: isMix ? "#E8282B" : "rgba(255,255,255,0.4)", background: isMix ? "rgba(232,40,43,0.10)" : "transparent" }}
+          >
+            <Users size={15} />
           </button>
           <button onClick={() => handleDownloadM3U(pl, tracks)} disabled={tracks.length === 0}
             title="Download M3U for TuneMyMusic"
@@ -485,6 +558,25 @@ export default function PlaylistsClient() {
             ) : (
               <>
                 <p className="text-white text-xl font-bold truncate">{pl.name}</p>
+                {mixArtists.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditArtistsOpen(true)}
+                    className="text-sm mt-0.5 truncate text-left w-full hover:text-white transition-colors"
+                    style={{ color: "rgba(255,255,255,0.55)" }}
+                  >
+                    {mixArtists.join(" · ")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditArtistsOpen(true)}
+                    className="text-sm mt-0.5 text-left hover:text-white/70 transition-colors"
+                    style={{ color: "rgba(255,255,255,0.35)" }}
+                  >
+                    Add artists
+                  </button>
+                )}
                 <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
                   {tracks.length} tracks{isPinned ? " · Pinned" : ""}
                 </p>
@@ -536,6 +628,18 @@ export default function PlaylistsClient() {
             targetPlaylistName={selectedPlaylist.name}
             onClose={() => setAddFromPlaylist(false)}
             onTracksAdded={() => fetchTracks(selectedPlaylist.id)}
+          />
+        )}
+        {editArtistsOpen && (
+          <EditMixArtistsSheet
+            open={editArtistsOpen}
+            playlistId={pl.id}
+            playlistName={pl.name}
+            initialArtists={mixArtistRecords}
+            onClose={() => setEditArtistsOpen(false)}
+            onSaved={(artists, description, addedCount, removedCount) => {
+              void handleArtistsSaved(pl.id, artists, description, addedCount, removedCount);
+            }}
           />
         )}
         {artistMixFab}
@@ -613,6 +717,7 @@ export default function PlaylistsClient() {
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 gap-2">
           {playlists.map((pl) => {
+            const mixArtists = parseMixArtists(pl.description);
             const isPinned = pinned.has(pl.id);
             const isDeleting = deleting.has(pl.id);
             const tracks = tracksMap[pl.id];
@@ -641,6 +746,11 @@ export default function PlaylistsClient() {
                 {/* Info */}
                 <div className="p-1.5">
                   <p className="text-white text-[10px] font-semibold truncate leading-tight">{pl.name}</p>
+                  {mixArtists.length > 0 && (
+                    <p className="text-[9px] mt-0.5 truncate leading-tight" style={{ color: "rgba(255,255,255,0.45)" }}>
+                      {mixArtists.join(" · ")}
+                    </p>
+                  )}
                   <p className="text-[9px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
                     {pl.tracks?.total ?? 0} tracks
                   </p>
@@ -659,24 +769,41 @@ export default function PlaylistsClient() {
           </h3>
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
             {pinnedArtists.map((pa) => (
-              <button
-                key={pa.id}
-                onClick={() => setSelectedArtist({ id: pa.artist_id, name: pa.artist_name, images: pa.artist_image ? [{ url: pa.artist_image }] : [], followers: { total: 0 }, genres: [], external_urls: { spotify: "" }, popularity: 0, type: "artist", uri: "" } as SpotifyArtist)}
-                className="flex flex-col items-center gap-1.5 shrink-0 group"
-                style={{ width: 72 }}
-              >
-                <div className="relative w-16 h-16 rounded-full overflow-hidden bg-white/[0.06] ring-2 ring-white/[0.05] group-hover:ring-[#E8282B]/40 transition-all">
-                  {pa.artist_image ? (
-                    <Image src={pa.artist_image} alt={pa.artist_name} fill unoptimized sizes="64px" className="object-cover group-hover:scale-105 transition-transform duration-300" />
+              <div key={pa.id} className="relative shrink-0 group" style={{ width: 72 }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedArtist({ id: pa.artist_id, name: pa.artist_name, images: pa.artist_image ? [{ url: pa.artist_image }] : [], followers: { total: 0 }, genres: [], external_urls: { spotify: "" }, popularity: 0, type: "artist", uri: "" } as SpotifyArtist)}
+                  className="flex flex-col items-center gap-1.5 w-full"
+                >
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden bg-white/[0.06] ring-2 ring-white/[0.05] group-hover:ring-[#E8282B]/40 transition-all">
+                    {pa.artist_image ? (
+                      <Image src={pa.artist_image} alt={pa.artist_name} fill unoptimized sizes="64px" className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Mic2 size={18} className="text-white/20" />
+                      </div>
+                    )}
+                    <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
+                  </div>
+                  <p className="text-[10px] text-white/45 group-hover:text-white transition-colors text-center truncate w-full leading-tight">{pa.artist_name}</p>
+                </button>
+                <button
+                  type="button"
+                  title="Remove artist"
+                  disabled={removingPinnedArtist === pa.artist_id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void removePinnedArtist(pa.artist_id);
+                  }}
+                  className="absolute top-0 right-0 z-10 w-5 h-5 rounded-full bg-black/70 border border-white/10 text-white/70 hover:text-white hover:bg-red-500/80 flex items-center justify-center transition-colors disabled:opacity-40"
+                >
+                  {removingPinnedArtist === pa.artist_id ? (
+                    <Loader2 size={10} className="animate-spin" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Mic2 size={18} className="text-white/20" />
-                    </div>
+                    <X size={10} />
                   )}
-                  <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
-                </div>
-                <p className="text-[10px] text-white/45 group-hover:text-white transition-colors text-center truncate w-full leading-tight">{pa.artist_name}</p>
-              </button>
+                </button>
+              </div>
             ))}
           </div>
         </section>

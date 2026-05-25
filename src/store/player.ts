@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { getSession } from "next-auth/react";
-import { addLog } from "./debugLog";
-
 export interface PlayableTrack {
   name: string;
   artist: string;
@@ -124,7 +122,6 @@ function setupMediaSessionHandlers() {
   navigator.mediaSession.setActionHandler("play", () => {
     const snapshot = usePlayerStore.getState();
     if (!snapshot.isPlaying && snapshot.currentTrack) {
-      addLog("[MediaSession] External play command — resuming Jokerly", "info");
       Promise.resolve(snapshot.togglePlay()).catch(() => {});
     }
   });
@@ -132,7 +129,6 @@ function setupMediaSessionHandlers() {
   navigator.mediaSession.setActionHandler("pause", () => {
     const snapshot = usePlayerStore.getState();
     if (snapshot.isPlaying) {
-      addLog("[MediaSession] External pause command — pausing Jokerly", "info");
       Promise.resolve(snapshot.togglePlay()).catch(() => {});
     }
   });
@@ -173,7 +169,6 @@ function schedulePlayRetry(index: number) {
   }
 
   if (playRetryCount >= MAX_PLAY_RETRIES) {
-    addLog(`[playIndex] Giving up after ${MAX_PLAY_RETRIES} retries for index ${index}`, "error");
     clearPlayRetry(true);
     return;
   }
@@ -237,14 +232,12 @@ async function tryAutoResumeFromInterruption() {
     return;
   }
   if (autoResumeAttempts >= MAX_AUTO_RESUME_ATTEMPTS) {
-    addLog(`[AutoResume] Giving up after ${MAX_AUTO_RESUME_ATTEMPTS} attempts`, "warn");
     suppressAutoResumeUntil = Date.now() + 30_000;
     stopAutoResumeLoop();
     return;
   }
 
   autoResumeAttempts += 1;
-  addLog(`[AutoResume] Attempting resume: "${snapshot.currentTrack.name}" (attempt ${autoResumeAttempts})`, "warn");
   try {
     await playerApi("play", {
       deviceId: snapshot.deviceId,
@@ -255,7 +248,6 @@ async function tryAutoResumeFromInterruption() {
     updateMediaSessionState(true);
   } catch (e) {
     const errorText = parseErrorText(e);
-    addLog(`[AutoResume] resume failed: ${errorText}`, "error");
     if (isAuthError(errorText)) {
       suppressAutoResumeUntil = Date.now() + 60_000;
       stopAutoResumeLoop();
@@ -476,7 +468,6 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     player.addListener("ready", (payload) => {
       const ready = payload as { device_id: string };
       clearPlayRetry(true);
-      addLog(`[SDK] Player ready, device: ${ready.device_id}`, "info");
       set({ deviceId: ready.device_id, isPlayerReady: true });
       // Do NOT call /me/player with play:false here — it pauses any currently
       // active Spotify session on the user's account. The device_id is already
@@ -500,7 +491,6 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     });
 
     player.addListener("not_ready", () => {
-      addLog("[SDK] Player not ready (device went offline)", "warn");
       clearPlayRetry(true);
       stopAutoResumeLoop();
       set({ deviceId: null, isPlayerReady: false });
@@ -543,17 +533,14 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
         Date.now() >= suppressAutoResumeUntil;
 
       if (unexpectedPausedInterruption && get().deviceId) {
-        addLog(`[SDK] Unexpected pause at ${nextState.position}ms — starting auto-resume`, "warn");
         startAutoResumeLoop();
       }
     });
 
     player.addListener("initialization_error", () => {
-      addLog("[SDK] initialization_error — player failed to init", "error");
       set({ isPlayerReady: false, sdkError: "Player failed to initialize. Reload the page." });
     });
     player.addListener("authentication_error", async () => {
-      addLog("[SDK] authentication_error — refreshing token", "warn");
       suppressAutoResumeUntil = Date.now() + 60_000;
       stopAutoResumeLoop();
       clearPlayRetry(true);
@@ -565,7 +552,6 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
           return;
         }
       } catch { /* fall through to error */ }
-      addLog("[SDK] authentication_error — token refresh failed", "error");
       set({
         isPlaying: false,
         isTransitioning: false,
@@ -574,7 +560,6 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
       });
     });
     player.addListener("account_error", () => {
-      addLog("[SDK] account_error — Spotify Premium required", "error");
       set({ isPlayerReady: false, sdkError: "Spotify Premium is required to use the player." });
     });
 
@@ -637,7 +622,6 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
 
     if (!deviceId) {
       // First click can happen before SDK reports ready device; queue it and auto-start on ready.
-      addLog(`[playIndex] No device yet — queuing index ${index} for when SDK is ready`, "warn");
       pendingPlayOnReadyIndex = index;
       set({
         pendingIndex: index,
@@ -669,7 +653,6 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
           }),
     });
 
-    addLog(`[playIndex] Playing "${nextTrack.name}" (index ${index}, offset ${targetPosition})`, "info");
     try {
       await playerApi("play", {
         deviceId,
@@ -680,7 +663,6 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     } catch (e) {
       const errorText = parseErrorText(e);
       if (isStaleDeviceError(errorText)) {
-        addLog(`[playIndex] Stale device detected - waiting for SDK ready before retry`, "warn");
         pendingPlayOnReadyIndex = index;
         clearPlayRetry(true);
         set({
@@ -696,7 +678,6 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
         return;
       }
 
-      addLog(`[playIndex] API error: ${errorText} - retrying`, "error");
       schedulePlayRetry(index);
       set({
         pendingIndex: null,

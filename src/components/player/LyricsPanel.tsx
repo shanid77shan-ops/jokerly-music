@@ -6,20 +6,6 @@ import { Loader2, MicVocal } from "lucide-react";
 
 interface LrcLine { timeMs: number; text: string; }
 
-function parseLrc(lrc: string): LrcLine[] {
-  return lrc.split("\n").flatMap((line) => {
-    const match = line.match(/^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
-    if (!match) return [];
-    const ms =
-      Number(match[1]) * 60_000 +
-      Number(match[2]) * 1_000 +
-      Number(match[3].padEnd(3, "0"));
-    const text = match[4].trim();
-    if (!text) return [];
-    return [{ timeMs: ms, text }];
-  });
-}
-
 interface Props {
   track: PlayableTrack;
   progressMs: number;
@@ -41,20 +27,28 @@ export default function LyricsPanel({ track, progressMs, fullscreen }: Props) {
     setPlainText(null);
 
     const artist = track.artist.split(",")[0].trim();
-    const url = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(track.name)}`;
+    const url = `/api/lyrics?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track.name)}`;
 
     fetch(url)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => {
-        if (d.syncedLyrics) setSyncedLines(parseLrc(d.syncedLyrics));
-        else if (d.plainLyrics) setPlainText(d.plainLyrics);
+      .then(async (response) => {
+        const data = (await response.json().catch(() => ({}))) as {
+          syncedLines?: LrcLine[];
+          plainText?: string;
+          notFound?: boolean;
+          error?: string;
+        };
+        if (!response.ok || data.notFound) {
+          setNotFound(true);
+          return;
+        }
+        if (data.syncedLines?.length) setSyncedLines(data.syncedLines);
+        else if (data.plainText) setPlainText(data.plainText);
         else setNotFound(true);
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [track.name, track.artist]);
 
-  // Find active synced line index
   const activeIdx = syncedLines
     ? syncedLines.reduce((best, line, i) => (line.timeMs <= progressMs ? i : best), -1)
     : -1;
@@ -75,8 +69,9 @@ export default function LyricsPanel({ track, progressMs, fullscreen }: Props) {
       style={{ background: fullscreen ? "transparent" : "var(--card)" }}
     >
       {loading && (
-        <div className="flex items-center justify-center py-8">
+        <div className="flex flex-col items-center justify-center py-8 gap-2">
           <Loader2 size={18} className="animate-spin text-white/30" />
+          <p className="text-[11px] text-white/25">Loading lyrics in English…</p>
         </div>
       )}
 
