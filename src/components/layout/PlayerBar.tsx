@@ -9,6 +9,7 @@ import { signOut, useSession } from "next-auth/react";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import QueueSheet from "@/components/player/QueueSheet";
 import LyricsPanel from "@/components/player/LyricsPanel";
+import SimilarMusicSection from "@/components/player/SimilarMusicSection";
 import { useToastStore } from "@/store/toast";
 
 function formatTime(seconds: number) {
@@ -402,10 +403,10 @@ export default function PlayerBar() {
         <div className="fixed inset-0 z-50 p-4 sm:p-6 flex items-end sm:items-center justify-center"
           style={{ background: "rgba(6,4,16,0.96)", backdropFilter: "blur(28px)" }}
           onClick={() => usePlayerStore.setState({ isPlayerExpanded: false })}>
-          <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="rounded-3xl border border-white/[0.08] p-5 shadow-2xl shadow-black/80"
+          <div className="w-full max-w-sm max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="rounded-3xl border border-white/[0.08] p-5 shadow-2xl shadow-black/80 flex flex-col min-h-0 max-h-full overflow-hidden"
               style={{ background: "var(--surface)" }}>
-              <div className="mb-5 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between shrink-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">Now Playing</p>
                 <button onClick={() => usePlayerStore.setState({ isPlayerExpanded: false })}
                   className="rounded-xl p-2 text-white/30 hover:bg-white/[0.07] hover:text-white transition-colors">
@@ -413,9 +414,9 @@ export default function PlayerBar() {
                 </button>
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-5 overflow-y-auto min-h-0 flex-1 pr-0.5 scrollbar-hide">
                 {/* Album art */}
-                <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-3xl shadow-2xl shadow-black/60"
+                <div className="relative mx-auto aspect-square w-full max-h-[38vh] overflow-hidden rounded-3xl shadow-2xl shadow-black/60 shrink-0"
                   style={{ background: "var(--card)" }}>
                   {currentTrack.image ? (
                     <Image src={currentTrack.image} alt={currentTrack.name} fill unoptimized className="object-cover" sizes="400px" />
@@ -592,7 +593,9 @@ export default function PlayerBar() {
                   )}
                 </div>
 
-                <p className="text-center text-xs text-white/20">{Math.max(queueIndex + 1, 1)} / {queue.length} in queue</p>
+                <SimilarMusicSection track={currentTrack} />
+
+                <p className="text-center text-xs text-white/20 shrink-0">{Math.max(queueIndex + 1, 1)} / {queue.length} in queue</p>
               </div>
             </div>
           </div>

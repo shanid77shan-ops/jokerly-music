@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePlayerStore } from "@/store/player";
-import { ChevronDown, Music, Trash2, Play, Pause, GripVertical } from "lucide-react";
+import { ChevronDown, Music, Trash2, Play, Pause, GripVertical, Sparkles } from "lucide-react";
+import SimilarMusicSection from "@/components/player/SimilarMusicSection";
 import Image from "next/image";
 import {
   DndContext,
@@ -109,7 +110,8 @@ function SortableTrack({
 }
 
 export default function QueueSheet({ onPlayIndex }: Props) {
-  const { queue, queueIndex, isPlaying, removeFromQueue, reorderQueue } = usePlayerStore();
+  const { queue, queueIndex, isPlaying, removeFromQueue, reorderQueue, currentTrack } = usePlayerStore();
+  const [tab, setTab] = useState<"queue" | "similar">("queue");
   const activeRef = useRef<HTMLDivElement | null>(null);
 
   const sensors = useSensors(
@@ -139,22 +141,60 @@ export default function QueueSheet({ onPlayIndex }: Props) {
       style={{ background: "rgba(6,4,16,0.97)", backdropFilter: "blur(28px)" }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-        <div>
-          <h2 className="text-white font-bold text-lg">Queue</h2>
-          <p className="text-xs text-white/30 mt-0.5">{queue.length} track{queue.length !== 1 ? "s" : ""}</p>
+      <div className="px-5 pt-5 pb-3 shrink-0 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-white font-bold text-lg">
+              {tab === "queue" ? "Queue" : "Similar"}
+            </h2>
+            <p className="text-xs text-white/30 mt-0.5">
+              {tab === "queue"
+                ? `${queue.length} track${queue.length !== 1 ? "s" : ""}`
+                : currentTrack
+                  ? `Like ${currentTrack.name}`
+                  : "Based on now playing"}
+            </p>
+          </div>
+          <button
+            onClick={() => usePlayerStore.setState({ isQueueOpen: false })}
+            className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.08] transition-colors"
+          >
+            <ChevronDown size={20} />
+          </button>
         </div>
-        <button
-          onClick={() => usePlayerStore.setState({ isQueueOpen: false })}
-          className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.08] transition-colors"
-        >
-          <ChevronDown size={20} />
-        </button>
+
+        <div className="flex gap-2 p-1 rounded-xl" style={{ background: "var(--card)" }}>
+          <button
+            type="button"
+            onClick={() => setTab("queue")}
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              tab === "queue" ? "bg-[#E8282B] text-white" : "text-white/45 hover:text-white"
+            }`}
+          >
+            Queue
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("similar")}
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
+              tab === "similar" ? "bg-[#E8282B] text-white" : "text-white/45 hover:text-white"
+            }`}
+          >
+            <Sparkles size={12} /> Similar
+          </button>
+        </div>
       </div>
 
-      {/* Track list */}
-      <div className="flex-1 overflow-y-auto px-3 pb-6 space-y-0.5">
-        {queue.length === 0 ? (
+      {/* Track list / similar */}
+      <div className="flex-1 overflow-y-auto px-3 pb-6 space-y-0.5 min-h-0">
+        {tab === "similar" && currentTrack ? (
+          <SimilarMusicSection track={currentTrack} compact />
+        ) : tab === "similar" ? (
+          <div className="flex flex-col items-center justify-center h-48 gap-3">
+            <Sparkles size={28} className="text-white/10" />
+            <p className="text-sm text-white/30">Play a song to see similar music</p>
+          </div>
+        ) : queue.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 gap-3">
             <Music size={32} className="text-white/10" />
             <p className="text-sm text-white/30">Queue is empty</p>
