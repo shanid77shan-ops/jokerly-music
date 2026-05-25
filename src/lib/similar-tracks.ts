@@ -33,7 +33,8 @@ async function spotifyGet(url: string, accessToken: string): Promise<unknown | n
 function dedupeTracks(
   tracks: SpotifyTrackItem[],
   excludeUri?: string | null,
-  excludeId?: string | null
+  excludeId?: string | null,
+  excludeIds: Set<string> = new Set()
 ): SpotifyTrackItem[] {
   const seen = new Set<string>();
   const result: SpotifyTrackItem[] = [];
@@ -42,6 +43,7 @@ function dedupeTracks(
     if (!track?.id || !track?.uri) continue;
     if (excludeUri && track.uri === excludeUri) continue;
     if (excludeId && track.id === excludeId) continue;
+    if (excludeIds.has(track.id)) continue;
     if (seen.has(track.id)) continue;
     seen.add(track.id);
     result.push(track);
@@ -132,7 +134,8 @@ async function fetchFromRecommendations(
 async function fetchFromArtistFallback(
   artistId: string,
   accessToken: string,
-  limit: number
+  poolSize: number,
+  relatedOffset = 0
 ): Promise<SpotifyTrackItem[]> {
   const collected: SpotifyTrackItem[] = [];
 
@@ -148,34 +151,45 @@ async function fetchFromArtistFallback(
   }
 
   const related = await getRelatedArtists(artistId, accessToken).catch(() => null);
-  for (const relatedArtist of (related as { artists?: { id: string }[] } | null)?.artists?.slice(0, 3) ?? []) {
+  const relatedArtists = (related as { artists?: { id: string }[] } | null)?.artists ?? [];
+  const slice = relatedArtists.slice(relatedOffset, relatedOffset + 6);
+  for (const relatedArtist of slice) {
     const top = (await spotifyGet(
-      `${SPOTIFY_BASE}/artists/${relatedArtist.id}/top-tracks?limit=5&market=from_token`,
+      `${SPOTIFY_BASE}/artists/${relatedArtist.id}/top-tracks?limit=10&market=from_token`,
       accessToken
     )) as { tracks?: SpotifyTrackItem[] } | null;
-    collected.push(...(top?.tracks?.slice(0, 3) ?? []));
+    collected.push(...(top?.tracks ?? []));
   }
 
-  return collected.slice(0, limit * 2);
+  return collected.slice(0, poolSize);
 }
 
 async function fetchFromSearchFallback(
   trackName: string,
   artistName: string,
   accessToken: string,
-  limit: number
+  poolSize: number,
+  refreshSeed = 0
 ): Promise<SpotifyTrackItem[]> {
   const primaryArtist = artistName.split(",")[0].trim();
-  const queries = [`artist:"${primaryArtist}"`, `artist:${primaryArtist}`, `${trackName} ${primaryArtist}`];
+  const queries = [
+    `artist:"${primaryArtist}"`,
+    `artist:${primaryArtist}`,
+    `${trackName} ${primaryArtist}`,
+    `${primaryArtist}`,
+    `genre:${primaryArtist} ${trackName}`,
+    `${trackName}`,
+  ];
   const collected: SpotifyTrackItem[] = [];
+  const ordered = [...queries.slice(refreshSeed % queries.length), ...queries];
 
-  for (const query of queries) {
+  for (const query of ordered) {
     try {
-      const data = (await searchSpotify(query, "track", accessToken, limit)) as {
+      const data = (await searchSpotify(query, "track", accessToken, 10)) as {
         tracks?: { items?: SpotifyTrackItem[] };
       };
       collected.push(...(data?.tracks?.items ?? []));
-      if (collected.length >= limit) break;
+      if (collected.length >= poolSize) break;
     } catch {
       // try next query
     }
@@ -192,10 +206,17 @@ export async function fetchSimilarTracks(
     trackName: string;
     artistName: string;
     limit?: number;
+    excludeIds?: string[];
+    refreshSeed?: number;
   }
 ): Promise<SpotifyTrackItem[]> {
-  const limit = options.limit ?? 15;
+  const limit = options.limit ?? 5;
+  const excluded = options.excludeIds ?? [];
+  const poolSize = Math.max(limit * 8, 40, excluded.length * 4 + limit * 3);
   const excludeUri = options.trackUri ?? null;
+  const excludeIds = new Set(excluded);
+  const refreshSeed = options.refreshSeed ?? 0;
+  const relatedOffset = refreshSeed * 2;
 
   const { trackId: resolvedTrackId, artistId: hintArtistId } = await resolveTrackId(
     options.trackId ?? null,
@@ -209,29 +230,31 @@ export async function fetchSimilarTracks(
 
   if (resolvedTrackId) {
     try {
-      tracks = await fetchFromRecommendations(resolvedTrackId, accessToken, limit);
+      tracks = await fetchFromRecommendations(resolvedTrackId, accessToken, poolSize);
     } catch (error) {
       if (!(error instanceof SpotifyError)) throw error;
     }
   }
 
-  if (tracks.length < limit) {
-    const artistId = await resolveArtistId(options.artistName, hintArtistId, accessToken);
-    if (artistId) {
-      const artistTracks = await fetchFromArtistFallback(artistId, accessToken, limit);
-      tracks = [...tracks, ...artistTracks];
-    }
-  }
-
-  if (tracks.length < limit) {
-    const searchTracks = await fetchFromSearchFallback(
-      options.trackName,
-      options.artistName,
+  const artistId = await resolveArtistId(options.artistName, hintArtistId, accessToken);
+  if (artistId) {
+    const artistTracks = await fetchFromArtistFallback(
+      artistId,
       accessToken,
-      limit
+      poolSize,
+      relatedOffset
     );
-    tracks = [...tracks, ...searchTracks];
+    tracks = [...tracks, ...artistTracks];
   }
 
-  return dedupeTracks(tracks, excludeUri, resolvedTrackId).slice(0, limit);
+  const searchTracks = await fetchFromSearchFallback(
+    options.trackName,
+    options.artistName,
+    accessToken,
+    poolSize,
+    refreshSeed
+  );
+  tracks = [...tracks, ...searchTracks];
+
+  return dedupeTracks(tracks, excludeUri, resolvedTrackId, excludeIds).slice(0, limit);
 }

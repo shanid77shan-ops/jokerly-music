@@ -21,6 +21,11 @@ export async function GET(req: NextRequest) {
   const artistName = searchParams.get("artist");
   const genre = searchParams.get("genre");
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "15", 10) || 15, 1), 20);
+  const excludeIds = (searchParams.get("exclude") ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  const refreshSeed = Math.max(0, parseInt(searchParams.get("refresh") ?? "0", 10) || 0);
 
   try {
     if (trackName && artistName) {
@@ -30,6 +35,8 @@ export async function GET(req: NextRequest) {
         trackName,
         artistName,
         limit,
+        excludeIds,
+        refreshSeed,
       });
       return NextResponse.json(
         { tracks },

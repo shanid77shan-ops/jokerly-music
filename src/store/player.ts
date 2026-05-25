@@ -33,6 +33,7 @@ interface PlayerState {
   endedToken: number;
   isPlayerExpanded: boolean;
   isQueueOpen: boolean;
+  queueSheetTab: "queue" | "similar";
   sleepTimerEndsAt: number | null;
 
   initializePlayer: (accessToken: string) => Promise<void>;
@@ -420,6 +421,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
   endedToken: 0,
   isPlayerExpanded: false,
   isQueueOpen: false,
+  queueSheetTab: "queue",
   sleepTimerEndsAt: null,
 
   initializePlayer: async (accessToken) => {
@@ -884,6 +886,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     volume: state.volume,
     isPlayerExpanded: false,
     isQueueOpen: false,
+    queueSheetTab: "queue",
     sleepTimerEndsAt: null,
     endedToken: 0,
     isPlayerReady: false,

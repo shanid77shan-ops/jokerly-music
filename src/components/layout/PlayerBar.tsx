@@ -9,7 +9,6 @@ import { signOut, useSession } from "next-auth/react";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import QueueSheet from "@/components/player/QueueSheet";
 import LyricsPanel from "@/components/player/LyricsPanel";
-import SimilarMusicSection from "@/components/player/SimilarMusicSection";
 import { useToastStore } from "@/store/toast";
 
 function formatTime(seconds: number) {
@@ -396,7 +395,7 @@ export default function PlayerBar() {
   return (
     <>
       {/* ── Queue Sheet ── */}
-      {isQueueOpen && <QueueSheet onPlayIndex={handleQueuePlayIndex} />}
+      {isQueueOpen ? <QueueSheet onPlayIndex={handleQueuePlayIndex} /> : null}
 
       {/* ── Expanded Now Playing ── */}
       {expanded && (
@@ -593,7 +592,19 @@ export default function PlayerBar() {
                   )}
                 </div>
 
-                <SimilarMusicSection track={currentTrack} />
+                <button
+                  type="button"
+                  onClick={() =>
+                    usePlayerStore.setState({
+                      isQueueOpen: true,
+                      isPlayerExpanded: false,
+                      queueSheetTab: "similar",
+                    })
+                  }
+                  className="w-full rounded-2xl border border-[#E8282B]/25 bg-[#E8282B]/10 px-4 py-3 text-sm font-semibold text-[#E8282B] hover:bg-[#E8282B]/15 transition-colors shrink-0"
+                >
+                  Open similar music (5 tracks + refresh)
+                </button>
 
                 <p className="text-center text-xs text-white/20 shrink-0">{Math.max(queueIndex + 1, 1)} / {queue.length} in queue</p>
               </div>

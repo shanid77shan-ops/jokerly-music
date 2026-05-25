@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePlayerStore } from "@/store/player";
+import { PlayableTrack, usePlayerStore } from "@/store/player";
 import { ChevronDown, Music, Trash2, Play, Pause, GripVertical, Sparkles } from "lucide-react";
 import SimilarMusicSection from "@/components/player/SimilarMusicSection";
 import Image from "next/image";
@@ -110,9 +110,39 @@ function SortableTrack({
 }
 
 export default function QueueSheet({ onPlayIndex }: Props) {
-  const { queue, queueIndex, isPlaying, removeFromQueue, reorderQueue, currentTrack } = usePlayerStore();
-  const [tab, setTab] = useState<"queue" | "similar">("queue");
+  const {
+    queue,
+    queueIndex,
+    isPlaying,
+    removeFromQueue,
+    reorderQueue,
+    currentTrack,
+    queueSheetTab: tab,
+    isQueueOpen,
+  } = usePlayerStore();
+  const setTab = (next: "queue" | "similar") =>
+    usePlayerStore.setState({ queueSheetTab: next });
   const activeRef = useRef<HTMLDivElement | null>(null);
+  const [similarSeed, setSimilarSeed] = useState<PlayableTrack | null>(null);
+  const prevOpenRef = useRef(false);
+  const prevTabRef = useRef(tab);
+
+  useEffect(() => {
+    const justOpened = isQueueOpen && !prevOpenRef.current;
+    const switchedToSimilar = tab === "similar" && prevTabRef.current !== "similar";
+
+    if (isQueueOpen && (justOpened || switchedToSimilar) && tab === "similar" && currentTrack) {
+      setSimilarSeed({ ...currentTrack });
+    }
+
+    prevOpenRef.current = isQueueOpen;
+    prevTabRef.current = tab;
+  }, [isQueueOpen, tab, currentTrack]);
+
+  const seedTrack = similarSeed ?? currentTrack;
+  const seedKey = seedTrack
+    ? `${seedTrack.uri ?? ""}::${seedTrack.name}::${seedTrack.artist}`
+    : "none";
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -150,8 +180,8 @@ export default function QueueSheet({ onPlayIndex }: Props) {
             <p className="text-xs text-white/30 mt-0.5">
               {tab === "queue"
                 ? `${queue.length} track${queue.length !== 1 ? "s" : ""}`
-                : currentTrack
-                  ? `Like ${currentTrack.name}`
+                : seedTrack
+                  ? `Like ${seedTrack.name}`
                   : "Based on now playing"}
             </p>
           </div>
@@ -185,51 +215,69 @@ export default function QueueSheet({ onPlayIndex }: Props) {
         </div>
       </div>
 
-      {/* Track list / similar */}
-      <div className="flex-1 overflow-y-auto px-3 pb-6 space-y-0.5 min-h-0">
-        {tab === "similar" && currentTrack ? (
-          <SimilarMusicSection track={currentTrack} compact />
-        ) : tab === "similar" ? (
-          <div className="flex flex-col items-center justify-center h-48 gap-3">
-            <Sparkles size={28} className="text-white/10" />
-            <p className="text-sm text-white/30">Play a song to see similar music</p>
-          </div>
-        ) : queue.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 gap-3">
-            <Music size={32} className="text-white/10" />
-            <p className="text-sm text-white/30">Queue is empty</p>
-          </div>
-        ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext
-              items={queue.map((t, i) => `${t.uri ?? t.name}-${i}`)}
-              strategy={verticalListSortingStrategy}
-            >
-              {queue.map((track, i) => {
-                const isCurrent = i === queueIndex;
-                const isCurrentlyPlaying = isCurrent && isPlaying;
+      {/* Track list / similar — keep both panels mounted to avoid DOM reconciliation errors */}
+      <div className="flex-1 min-h-0 relative">
+        <div
+          className={`absolute inset-0 overflow-y-auto px-3 pb-6 space-y-0.5 ${
+            tab === "queue" ? "" : "hidden"
+          }`}
+          aria-hidden={tab !== "queue"}
+        >
+          {queue.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 gap-3">
+              <Music size={32} className="text-white/10" />
+              <p className="text-sm text-white/30">Queue is empty</p>
+            </div>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext
+                items={queue.map((t, i) => `${t.uri ?? t.name}-${i}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                {queue.map((track, i) => {
+                  const isCurrent = i === queueIndex;
+                  const isCurrentlyPlaying = isCurrent && isPlaying;
 
-                return (
-                  <div key={`${track.uri ?? track.name}-${i}`} ref={isCurrent ? activeRef : null}>
-                    <SortableTrack
-                      track={track}
-                      index={i}
-                      isCurrent={isCurrent}
-                      isCurrentlyPlaying={isCurrentlyPlaying}
-                      onPlay={() => {
-                        const didStart = onPlayIndex(i);
-                        if (didStart !== false) {
-                          usePlayerStore.setState({ isQueueOpen: false });
-                        }
-                      }}
-                      onRemove={(e) => { e.stopPropagation(); removeFromQueue(i); }}
-                    />
-                  </div>
-                );
-              })}
-            </SortableContext>
-          </DndContext>
-        )}
+                  return (
+                    <div key={`${track.uri ?? track.name}-${i}`} ref={isCurrent ? activeRef : null}>
+                      <SortableTrack
+                        track={track}
+                        index={i}
+                        isCurrent={isCurrent}
+                        isCurrentlyPlaying={isCurrentlyPlaying}
+                        onPlay={() => {
+                          const didStart = onPlayIndex(i);
+                          if (didStart !== false) {
+                            window.requestAnimationFrame(() => {
+                              usePlayerStore.setState({ isQueueOpen: false });
+                            });
+                          }
+                        }}
+                        onRemove={(e) => { e.stopPropagation(); removeFromQueue(i); }}
+                      />
+                    </div>
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
+
+        <div
+          className={`absolute inset-0 flex flex-col px-3 pb-4 ${
+            tab === "similar" ? "" : "hidden"
+          }`}
+          aria-hidden={tab !== "similar"}
+        >
+          {seedTrack ? (
+            <SimilarMusicSection key={seedKey} track={seedTrack} />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-48 gap-3">
+              <Sparkles size={28} className="text-white/10" />
+              <p className="text-sm text-white/30">Play a song to see similar music</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
