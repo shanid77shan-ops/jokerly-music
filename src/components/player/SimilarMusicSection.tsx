@@ -24,16 +24,20 @@ function toPlayable(t: SpotifyTrack): PlayableTrack {
 
 export default function SimilarMusicSection({ track, compact }: Props) {
   const [similarTracks, setSimilarTracks] = useState<SpotifyTrack[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [empty, setEmpty] = useState(false);
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
 
   const fetchSimilar = useCallback(async () => {
     if (!track.name || !track.artist) {
       setSimilarTracks([]);
+      setEmpty(true);
+      setLoading(false);
       return;
     }
 
     setLoading(true);
+    setEmpty(false);
     try {
       const params = new URLSearchParams({ limit: "15" });
       const trackId = spotifyTrackIdFromUri(track.uri);
@@ -43,14 +47,26 @@ export default function SimilarMusicSection({ track, compact }: Props) {
       params.set("artist", track.artist);
 
       const res = await fetch(`/api/spotify/recommendations?${params}`);
-      const data = (await res.json().catch(() => ({}))) as { tracks?: SpotifyTrack[] };
+      const data = (await res.json().catch(() => ({}))) as {
+        tracks?: SpotifyTrack[];
+        error?: string;
+      };
+
+      if (!res.ok) {
+        setSimilarTracks([]);
+        setEmpty(true);
+        return;
+      }
+
       const currentUri = track.uri ?? "";
       const items = (data.tracks ?? []).filter(
-        (item) => item.uri && item.uri !== currentUri
+        (item) => item?.uri && item.uri !== currentUri && item?.id
       );
       setSimilarTracks(items.slice(0, 12));
+      setEmpty(items.length === 0);
     } catch {
       setSimilarTracks([]);
+      setEmpty(true);
     } finally {
       setLoading(false);
     }
@@ -71,8 +87,6 @@ export default function SimilarMusicSection({ track, compact }: Props) {
     currentTrack?.uri === item.uri &&
     currentTrack?.name === item.name;
 
-  if (!loading && similarTracks.length === 0) return null;
-
   return (
     <section className={compact ? "space-y-2" : "space-y-3 pt-1 border-t border-white/[0.06]"}>
       <div className="flex items-center gap-2">
@@ -83,10 +97,14 @@ export default function SimilarMusicSection({ track, compact }: Props) {
         {loading && <Loader2 size={12} className="animate-spin text-white/30" />}
       </div>
 
-      {loading && similarTracks.length === 0 ? (
-        <div className="flex items-center justify-center py-6">
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
           <Loader2 size={18} className="animate-spin text-white/25" />
         </div>
+      ) : empty ? (
+        <p className="text-center text-sm text-white/30 py-8">
+          No similar tracks found for this song
+        </p>
       ) : (
         <div className={`flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide ${compact ? "" : "-mx-1 px-1"}`}>
           {similarTracks.map((item) => {
@@ -105,7 +123,7 @@ export default function SimilarMusicSection({ track, compact }: Props) {
                 style={{ width: compact ? 68 : 76 }}
               >
                 <div
-                  className="relative w-14 h-14 rounded-xl overflow-hidden bg-white/[0.06]"
+                  className="relative rounded-xl overflow-hidden bg-white/[0.06]"
                   style={{ width: compact ? 52 : 56, height: compact ? 52 : 56 }}
                 >
                   {image ? (

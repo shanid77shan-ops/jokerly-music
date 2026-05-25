@@ -1,35 +1,14 @@
 import { auth } from "@/lib/auth";
 import {
   getUserTopTracks,
-  getRecommendationsByTrack,
   getRecommendationsByGenre,
-  searchSpotify,
 } from "@/lib/spotify";
-import { spotifyTrackIdFromUri } from "@/lib/spotify-track-id";
+import { fetchSimilarTracks } from "@/lib/similar-tracks";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 30;
+
 const GENRE_MAP: Record<string, string> = { "r&b": "r-n-b" };
-
-async function resolveTrackId(
-  trackId: string | null,
-  trackUri: string | null,
-  trackName: string | null,
-  artistName: string | null,
-  accessToken: string
-): Promise<string | null> {
-  if (trackId) return trackId;
-  const fromUri = spotifyTrackIdFromUri(trackUri);
-  if (fromUri) return fromUri;
-  if (!trackName || !artistName) return null;
-
-  const data = await searchSpotify(
-    `track:${trackName} artist:${artistName.split(",")[0].trim()}`,
-    "track",
-    accessToken,
-    3
-  );
-  return data?.tracks?.items?.[0]?.id ?? null;
-}
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -44,33 +23,42 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "15", 10) || 15, 1), 20);
 
   try {
-    const resolvedId = await resolveTrackId(
-      trackId,
-      trackUri,
-      trackName,
-      artistName,
-      session.accessToken
-    );
-
-    if (resolvedId) {
-      const data = await getRecommendationsByTrack(resolvedId, session.accessToken, limit);
-      return NextResponse.json({ tracks: data.tracks ?? [], trackId: resolvedId });
+    if (trackName && artistName) {
+      const tracks = await fetchSimilarTracks(session.accessToken, {
+        trackId,
+        trackUri,
+        trackName,
+        artistName,
+        limit,
+      });
+      return NextResponse.json(
+        { tracks },
+        { headers: { "Cache-Control": "private, max-age=120, stale-while-revalidate=300" } }
+      );
     }
 
     if (trackId) {
-      const data = await getRecommendationsByTrack(trackId, session.accessToken, limit);
-      return NextResponse.json({ tracks: data.tracks ?? [] });
+      const tracks = await fetchSimilarTracks(session.accessToken, {
+        trackId,
+        trackUri,
+        trackName: trackName ?? "",
+        artistName: artistName ?? "",
+        limit,
+      });
+      return NextResponse.json({ tracks });
     }
+
     if (genre) {
       const seed = GENRE_MAP[genre] ?? genre;
-      const data = await getRecommendationsByGenre(seed, session.accessToken, 20);
+      const data = await getRecommendationsByGenre(seed, session.accessToken, limit);
       return NextResponse.json({ tracks: data.tracks ?? [] });
     }
-    const data = await getUserTopTracks(session.accessToken, 20);
+
+    const data = await getUserTopTracks(session.accessToken, limit);
     return NextResponse.json({ tracks: data.items ?? [] });
   } catch {
     try {
-      const data = await getRecommendationsByGenre("pop", session.accessToken, 20);
+      const data = await getRecommendationsByGenre("pop", session.accessToken, limit);
       return NextResponse.json({ tracks: data.tracks ?? [] });
     } catch {
       return NextResponse.json({ tracks: [] });
