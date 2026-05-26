@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Heart, Music, Mic2, Play, Trash2, Loader2, ArrowLeft, X } from "lucide-react";
+import { Heart, Music, Mic2, Play, Trash2, Loader2, ArrowLeft, Upload, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
@@ -9,7 +9,6 @@ import { useLikesStore, LikedSong, LikedArtist } from "@/store/likes";
 import { usePlayerStore, PlayableTrack } from "@/store/player";
 import ArtistSheet from "@/components/music/ArtistSheet";
 import { SpotifyArtist } from "@/types/spotify";
-import SpotifyIcon from "@/components/icons/SpotifyIcon";
 import TransferResultDialog, { TransferResult } from "@/components/spotify/TransferResultDialog";
 import { SPOTIFY_SCOPES } from "@/lib/spotify-scopes";
 
@@ -143,11 +142,10 @@ export default function LikedClient() {
         <button
           onClick={() => void transferLikedToSpotify()}
           disabled={transferring || !loaded || (songs.length === 0 && artists.length === 0)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white font-semibold text-xs transition-all active:scale-95 disabled:opacity-40"
-          style={{ background: "rgba(29,185,84,0.14)", color: "#1DB954" }}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#E8282B]/15 text-[#E8282B] font-semibold text-xs transition-all active:scale-95 disabled:opacity-40 hover:bg-[#E8282B]/25"
         >
-          {transferring ? <Loader2 size={14} className="animate-spin" /> : <SpotifyIcon size={14} />}
-          Spotify
+          {transferring ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+          Transfer
         </button>
       </div>
 
