@@ -84,17 +84,17 @@ export default function TransferResultDialog({ result, onClose, onReauthorize }:
           {result.type === "success" && result.url && (
             <button
               onClick={() => window.open(result.url || "", "_blank", "noopener,noreferrer")}
-              className="flex-1 rounded-2xl bg-[#1DB954] px-4 py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90"
+              className="flex-1 rounded-2xl bg-white/[0.08] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-white/[0.12]"
             >
-              Open Spotify
+              Open playlist
             </button>
           )}
           {canReauthorize && (
             <button
               onClick={onReauthorize}
-              className="flex-1 rounded-2xl bg-[#1DB954] px-4 py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90"
+              className="flex-1 rounded-2xl bg-[#E8282B] px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
             >
-              Continue with Spotify
+              Sign in again
             </button>
           )}
           <button

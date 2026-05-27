@@ -139,15 +139,15 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <div className="h-px bg-white/[0.06]" />
-          <div className="rounded-2xl border border-[#1DB954]/20 p-3" style={{ background: "rgba(29,185,84,0.06)" }}>
+          <div className="rounded-2xl border border-[#E8282B]/20 p-3" style={{ background: "rgba(232,40,43,0.06)" }}>
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-white text-sm font-medium">Spotify permissions</p>
+                <p className="text-white text-sm font-medium">Account access</p>
                 <p className="text-white/40 text-xs mt-0.5">Refresh access for playlist and liked transfers.</p>
               </div>
               <button
                 onClick={reconnectSpotify}
-                className="shrink-0 flex items-center gap-1.5 rounded-xl bg-[#1DB954] px-3 py-1.5 text-xs font-bold text-black transition-opacity hover:opacity-90"
+                className="shrink-0 flex items-center gap-1.5 rounded-xl bg-[#E8282B] px-3 py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-90"
               >
                 <RefreshCw size={13} />
                 Reconnect

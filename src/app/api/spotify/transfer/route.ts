@@ -60,7 +60,7 @@ function isSpotifyTrackUri(uri: string) {
 function spotifyErrorMessage(status: number, details: string) {
   const lower = details.toLowerCase();
   if (status === 401 || status === 403 || lower.includes("scope") || lower.includes("permission")) {
-    return "Spotify needs a one-time permission upgrade. Tap Continue with Spotify, approve it, then retry transfer.";
+    return "Your account needs a one-time permission upgrade. Sign in again, approve access, then retry transfer.";
   }
   return details || `Spotify API ${status}`;
 }
