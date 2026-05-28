@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth";
 import { getUserTopTracks, searchSpotify } from "@/lib/spotify";
 import {
   fetchSimilarTracks,
-  fetchSimilarTracksFallback,
   normalizeSimilarTrack,
   type SimilarTrack,
 } from "@/lib/similar-tracks";
@@ -12,18 +11,42 @@ export const maxDuration = 60;
 
 const GENRE_MAP: Record<string, string> = { "r&b": "r-n-b" };
 const MAX_EXCLUDE_IDS = 80;
+const CACHE_TTL_MS = 90_000;
+const CACHE_MAX = 64;
+
+type CacheEntry = { tracks: SimilarTrack[]; rateLimited: boolean; expires: number };
+const similarCache = new Map<string, CacheEntry>();
 
 function normalizeList(items: unknown[]): SimilarTrack[] {
   return items.map(normalizeSimilarTrack).filter((t): t is SimilarTrack => !!t);
 }
 
-function json(tracks: SimilarTrack[]) {
+function cacheKey(
+  trackId: string | null,
+  trackUri: string | null,
+  trackName: string,
+  artistName: string,
+  refreshSeed: number,
+  excludeIds: string[]
+) {
+  return [
+    trackId ?? "",
+    trackUri ?? "",
+    trackName,
+    artistName,
+    String(refreshSeed),
+    excludeIds.join(","),
+  ].join("::");
+}
+
+function json(tracks: SimilarTrack[], rateLimited = false) {
   return NextResponse.json(
-    { tracks },
+    { tracks, rateLimited: rateLimited || undefined },
     {
+      status: rateLimited && tracks.length === 0 ? 429 : 200,
       headers:
         tracks.length > 0
-          ? { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" }
+          ? { "Cache-Control": "private, max-age=90, stale-while-revalidate=120" }
           : { "Cache-Control": "no-store" },
     }
   );
@@ -55,42 +78,13 @@ export async function GET(req: NextRequest) {
 
   try {
     if (trackName.trim() && artistName.trim()) {
-      let tracks = await fetchSimilarTracksFallback(
-        token,
-        trackName,
-        artistName,
-        limit,
-        refreshSeed
-      );
-
-      if (tracks.length < limit) {
-        tracks = await fetchSimilarTracks(token, {
-          trackId,
-          trackUri,
-          trackName,
-          artistName,
-          limit,
-          excludeIds,
-          refreshSeed,
-        });
+      const key = cacheKey(trackId, trackUri, trackName, artistName, refreshSeed, excludeIds);
+      const cached = similarCache.get(key);
+      if (cached && cached.expires > Date.now()) {
+        return json(cached.tracks, cached.rateLimited);
       }
 
-      if (tracks.length < limit) {
-        tracks = await fetchSimilarTracksFallback(
-          token,
-          trackName,
-          artistName,
-          limit,
-          refreshSeed + 1,
-          tracks
-        );
-      }
-
-      return json(tracks);
-    }
-
-    if (trackId) {
-      let tracks = await fetchSimilarTracks(token, {
+      const { tracks, rateLimited } = await fetchSimilarTracks(token, {
         trackId,
         trackUri,
         trackName,
@@ -100,18 +94,32 @@ export async function GET(req: NextRequest) {
         refreshSeed,
       });
 
-      if (tracks.length < limit && artistName.trim()) {
-        tracks = await fetchSimilarTracksFallback(
-          token,
-          trackName,
-          artistName,
-          limit,
-          refreshSeed,
-          tracks
-        );
+      if (tracks.length > 0 || !rateLimited) {
+        similarCache.set(key, {
+          tracks,
+          rateLimited,
+          expires: Date.now() + CACHE_TTL_MS,
+        });
+        if (similarCache.size > CACHE_MAX) {
+          const oldest = similarCache.keys().next().value;
+          if (oldest) similarCache.delete(oldest);
+        }
       }
 
-      return json(tracks);
+      return json(tracks, rateLimited);
+    }
+
+    if (trackId) {
+      const { tracks, rateLimited } = await fetchSimilarTracks(token, {
+        trackId,
+        trackUri,
+        trackName,
+        artistName,
+        limit,
+        excludeIds,
+        refreshSeed,
+      });
+      return json(tracks, rateLimited);
     }
 
     if (genre) {
@@ -126,29 +134,9 @@ export async function GET(req: NextRequest) {
     return json(normalizeList((data as { items?: unknown[] }).items ?? []));
   } catch (e) {
     console.error("[recommendations]", e);
-    if (trackName.trim() && artistName.trim()) {
-      try {
-        const tracks = await fetchSimilarTracksFallback(
-          token,
-          trackName,
-          artistName,
-          limit,
-          refreshSeed
-        );
-        if (tracks.length > 0) return json(tracks);
-      } catch {
-        // fall through
-      }
-    }
-    try {
-      const data = (await searchSpotify("top", "track", token, limit)) as {
-        tracks?: { items?: unknown[] };
-      };
-      const tracks = normalizeList(data.tracks?.items ?? []);
-      if (tracks.length > 0) return json(tracks);
-    } catch {
-      // fall through
-    }
-    return NextResponse.json({ tracks: [] }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { tracks: [], error: "fetch_failed" },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   }
 }

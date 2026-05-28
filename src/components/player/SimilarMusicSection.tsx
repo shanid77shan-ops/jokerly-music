@@ -55,35 +55,6 @@ function toPlayable(t: SpotifyTrack): PlayableTrack {
   };
 }
 
-async function searchSimilarViaApi(
-  trackName: string,
-  artistName: string,
-  limit: number,
-  refreshSeed: number
-): Promise<SpotifyTrack[]> {
-  const primary = artistName.split(",")[0]?.trim() ?? "";
-  const queries = [
-    primary,
-    primary && trackName ? `${trackName} ${primary}` : "",
-    trackName,
-  ].filter(Boolean);
-  const start = refreshSeed % queries.length;
-
-  for (let i = 0; i < queries.length; i++) {
-    const q = queries[(start + i) % queries.length];
-    const params = new URLSearchParams({ q, type: "track", limit: String(limit) });
-    const res = await fetch(`/api/spotify/search?${params}`, {
-      credentials: "same-origin",
-      cache: "no-store",
-    });
-    if (!res.ok) continue;
-    const data = (await res.json()) as { tracks?: SpotifyTrack[] };
-    const items = (data.tracks ?? []).map(normalizeItem).filter((t): t is SpotifyTrack => !!t);
-    if (items.length > 0) return items;
-  }
-  return [];
-}
-
 export default function SimilarMusicSection({ track, variant = "sheet" }: Props) {
   const embedded = variant === "embedded";
   const [similarTracks, setSimilarTracks] = useState<SpotifyTrack[]>([]);
@@ -92,6 +63,7 @@ export default function SimilarMusicSection({ track, variant = "sheet" }: Props)
   const [refreshing, setRefreshing] = useState(false);
   const [empty, setEmpty] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
   const [modalTrack, setModalTrack] = useState<{
     uri: string;
     name: string;
@@ -105,7 +77,6 @@ export default function SimilarMusicSection({ track, variant = "sheet" }: Props)
   const playingRef = useRef(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const hasMoreRef = useRef(true);
-  const initialRetryRef = useRef(false);
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
 
   const fetchTracks = useCallback(
@@ -126,6 +97,7 @@ export default function SimilarMusicSection({ track, variant = "sheet" }: Props)
         setRefreshing(true);
         setEmpty(false);
         setSessionExpired(false);
+        setRateLimited(false);
       } else if (mode === "more") {
         if (!hasMoreRef.current || loadingMore || loading) return;
         setLoadingMore(true);
@@ -134,6 +106,7 @@ export default function SimilarMusicSection({ track, variant = "sheet" }: Props)
         setLoading(true);
         setEmpty(false);
         setSessionExpired(false);
+        setRateLimited(false);
       }
 
       try {
@@ -159,7 +132,12 @@ export default function SimilarMusicSection({ track, variant = "sheet" }: Props)
         const data = (await res.json().catch(() => ({}))) as {
           tracks?: SpotifyTrack[];
           error?: string;
+          rateLimited?: boolean;
         };
+
+        if (res.status === 429 || data.rateLimited) {
+          setRateLimited(true);
+        }
 
         if (!res.ok) {
           const expired =
@@ -188,18 +166,7 @@ export default function SimilarMusicSection({ track, variant = "sheet" }: Props)
               return true;
             });
 
-        let items = filterItems(data.tracks ?? []);
-
-        if (items.length === 0) {
-          const searched = await searchSimilarViaApi(
-            track.name,
-            artistLabel,
-            limit,
-            refreshSeedRef.current
-          );
-          if (generation !== fetchGenRef.current) return;
-          items = filterItems(searched);
-        }
+        const items = filterItems(data.tracks ?? []);
 
         for (const item of items) shownIdsRef.current.add(item.id);
 
@@ -214,11 +181,6 @@ export default function SimilarMusicSection({ track, variant = "sheet" }: Props)
           } else {
             setSimilarTracks([]);
             setEmpty(true);
-            if (mode === "initial" && !initialRetryRef.current) {
-              initialRetryRef.current = true;
-              refreshSeedRef.current += 1;
-              window.setTimeout(() => void fetchTracks("initial"), 400);
-            }
           }
         } else {
           setSimilarTracks((prev) => {
@@ -255,13 +217,15 @@ export default function SimilarMusicSection({ track, variant = "sheet" }: Props)
 
   useEffect(() => {
     const key = `${track.uri ?? ""}::${track.name}::${track.artist}`;
-    if (trackKeyRef.current === key) return;
-    trackKeyRef.current = key;
-    shownIdsRef.current = new Set();
-    refreshSeedRef.current = 0;
-    initialRetryRef.current = false;
-    hasMoreRef.current = true;
-    void fetchTracks("initial");
+    const timer = window.setTimeout(() => {
+      if (trackKeyRef.current === key) return;
+      trackKeyRef.current = key;
+      shownIdsRef.current = new Set();
+      refreshSeedRef.current = 0;
+      hasMoreRef.current = true;
+      void fetchTracks("initial");
+    }, 400);
+    return () => window.clearTimeout(timer);
   }, [track.artist, track.name, track.uri, fetchTracks]);
 
   useEffect(() => {
@@ -446,7 +410,9 @@ export default function SimilarMusicSection({ track, variant = "sheet" }: Props)
               <p className="text-sm text-white/35 text-center">
                 {sessionExpired
                   ? "Session expired. Sign in again to load similar tracks."
-                  : "No similar tracks found"}
+                  : rateLimited
+                    ? "Spotify rate limit reached. Wait a moment, then try again."
+                    : "No similar tracks found"}
               </p>
               {sessionExpired ? (
                 <a
@@ -497,7 +463,9 @@ export default function SimilarMusicSection({ track, variant = "sheet" }: Props)
               <p className="text-sm text-white/35 text-center">
                 {sessionExpired
                   ? "Session expired. Sign in again."
-                  : "No similar tracks found"}
+                  : rateLimited
+                    ? "Rate limit reached. Try again shortly."
+                    : "No similar tracks found"}
               </p>
             </div>
           ) : (
