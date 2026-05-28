@@ -29,7 +29,7 @@ export async function POST() {
     return NextResponse.json({ ok: false, available: false, sent: 0 });
   }
   const payload = toPushPayload({
-    title: "Jokerly notifications enabled",
+    title: "JKMuusic notifications enabled",
     body: "You will now get release alerts for liked artists.",
     url: "/liked",
   });

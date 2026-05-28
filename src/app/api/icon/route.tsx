@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={logoUrl}
-          alt="Jokerly"
+          alt="JKMuusic"
           style={{
             width: "100%",
             height: "100%",

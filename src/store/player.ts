@@ -375,7 +375,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     }
 
     const player = new Spotify.Player({
-      name: "Jokerly Web Player",
+      name: "JKMuusic Web Player",
       getOAuthToken: async (cb) => {
         try {
           const res = await fetch("/api/spotify/token", {

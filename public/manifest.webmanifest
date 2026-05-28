@@ -1,7 +1,7 @@
 {
-  "name": "Jokerly",
-  "short_name": "Jokerly",
-  "description": "Discover, search, and play your music",
+  "name": "JKMuusic",
+  "short_name": "JKMuusic",
+  "description": "Listening you",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#07051a",
