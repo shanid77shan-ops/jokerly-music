@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getArtist, searchSpotify } from "@/lib/spotify";
+import { getRelatedArtists } from "@/lib/spotify";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -23,27 +23,15 @@ export async function GET(req: NextRequest) {
   }
 
   const seen = new Set<string>([...seedIds, ...excludeIds]);
-  const artists: { id: string; name: string; images?: { url: string }[] }[] = [];
+  const artists: unknown[] = [];
 
   for (const artistId of seedIds) {
     try {
-      const artist = (await getArtist(artistId, session.accessToken)) as {
-        name?: string;
-        genres?: string[];
-      };
-      const name = artist?.name;
-      if (!name) continue;
-
-      const genre = artist.genres?.[0];
-      const query = genre ? `genre:${genre}` : name;
-      const data = (await searchSpotify(query, "artist", session.accessToken, 12)) as {
-        artists?: { items?: { id: string; name: string; images?: { url: string }[] }[] };
-      };
-
-      for (const item of data.artists?.items ?? []) {
-        if (!item?.id || seen.has(item.id)) continue;
-        seen.add(item.id);
-        artists.push(item);
+      const data = await getRelatedArtists(artistId, session.accessToken);
+      for (const artist of data.artists ?? []) {
+        if (!artist?.id || seen.has(artist.id)) continue;
+        seen.add(artist.id);
+        artists.push(artist);
       }
     } catch {
       // continue with other seed artists
