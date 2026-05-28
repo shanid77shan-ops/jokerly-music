@@ -148,6 +148,7 @@ export default function HomeClient() {
   const [langs, setLangs] = useState<string[] | null>(hasFreshCache ? homeCache!.langs : null);
   const [favoriteArtists, setFavoriteArtists] = useState<FavoriteArtist[]>(hasFreshCache ? homeCache!.favoriteArtists : []);
   const [prefsChecked, setPrefsChecked] = useState(hasFreshCache);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [feedSections, setFeedSections] = useState<FeedSection[]>(hasFreshCache ? homeCache!.feedSections : []);
   const [feedLoading, setFeedLoading] = useState(!hasFreshCache);
   const [pinned, setPinned] = useState<PinnedPlaylist[]>(hasFreshCache ? homeCache!.pinned : []);
@@ -242,21 +243,46 @@ export default function HomeClient() {
   // Initial load (prefs only — pinned is always fetched above)
   useEffect(() => {
     if (hasFreshCache) return;
-    fetch("/api/preferences").then((r) => r.json()).catch(() => ({ languages: [], favoriteArtists: [] }))
+    fetch("/api/preferences", { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) return { languages: null as string[] | null, favoriteArtists: [] as FavoriteArtist[], ok: false };
+        const data = await r.json();
+        return {
+          languages: Array.isArray(data.languages) ? data.languages : [],
+          favoriteArtists: Array.isArray(data.favoriteArtists) ? data.favoriteArtists : [],
+          ok: true,
+          degraded: !!data.degraded,
+        };
+      })
+      .catch(() => ({ languages: ["english"], favoriteArtists: [], ok: false, degraded: true }))
       .then((prefsData) => {
-        const newLangs: string[] = prefsData.languages ?? [];
-        const newArtists: FavoriteArtist[] = prefsData.favoriteArtists ?? [];
-        setLangs(newLangs);
+        const newLangs = prefsData.languages;
+        const newArtists = prefsData.favoriteArtists;
+        if (newLangs !== null) {
+          setLangs(newLangs);
+          setNeedsOnboarding(
+            prefsData.ok && !prefsData.degraded && newLangs.length === 0
+          );
+        } else {
+          setLangs(["english"]);
+        }
         setFavoriteArtists(newArtists);
         setPrefsChecked(true);
-        homeCache = { langs: newLangs, favoriteArtists: newArtists, pinned: homeCache?.pinned ?? [], feedSections: homeCache?.feedSections ?? [], forYouTracks: homeCache?.forYouTracks ?? [], ts: homeCache?.ts ?? 0 };
+        homeCache = {
+          langs: newLangs ?? [],
+          favoriteArtists: newArtists,
+          pinned: homeCache?.pinned ?? [],
+          feedSections: homeCache?.feedSections ?? [],
+          forYouTracks: homeCache?.forYouTracks ?? [],
+          ts: homeCache?.ts ?? 0,
+        };
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (prefsChecked && langs !== null && langs.length === 0) router.push("/onboarding");
-  }, [prefsChecked, langs, router]);
+    if (prefsChecked && needsOnboarding) router.push("/onboarding");
+  }, [prefsChecked, needsOnboarding, router]);
 
   // Language feed
   const fetchFeed = useCallback((langList: string[], bust = false) => {

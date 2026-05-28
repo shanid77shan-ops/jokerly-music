@@ -1,5 +1,5 @@
-import { auth } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { getApiSession, unauthorized } from "@/lib/api-auth";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export interface FavoriteArtist {
@@ -9,29 +9,52 @@ export interface FavoriteArtist {
 }
 
 export async function GET() {
-  let session;
-  try { session = await auth(); } catch { return NextResponse.json({ error: "Auth error" }, { status: 401 }); }
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getApiSession();
+  if (!session) return unauthorized();
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ languages: [], favoriteArtists: [] });
+  }
 
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("user_language_prefs")
-    .select("languages, favorite_artists")
-    .eq("user_id", session.spotifyId)
-    .single();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("user_language_prefs")
+      .select("languages, favorite_artists")
+      .eq("user_id", session.spotifyId)
+      .maybeSingle();
 
-  return NextResponse.json({
-    languages: data?.languages ?? null,
-    favoriteArtists: (data?.favorite_artists as FavoriteArtist[] | null) ?? [],
-  });
+    if (error) {
+      console.error("[preferences GET]", error.message);
+      return NextResponse.json({
+        languages: ["english"],
+        favoriteArtists: [],
+        degraded: true,
+      });
+    }
+
+    const languages = data?.languages;
+    return NextResponse.json({
+      languages: Array.isArray(languages) ? languages : [],
+      favoriteArtists: (data?.favorite_artists as FavoriteArtist[] | null) ?? [],
+    });
+  } catch (e) {
+    console.error("[preferences GET]", e);
+    return NextResponse.json({
+      languages: ["english"],
+      favoriteArtists: [],
+      degraded: true,
+    });
+  }
 }
 
 export async function POST(req: NextRequest) {
-  let session;
-  try { session = await auth(); } catch { return NextResponse.json({ error: "Auth error" }, { status: 401 }); }
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getApiSession();
+  if (!session) return unauthorized();
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ ok: false, error: "Database not configured" }, { status: 503 });
+  }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const updateData: Record<string, unknown> = {
     user_id: session.spotifyId,
     updated_at: new Date().toISOString(),
@@ -40,11 +63,19 @@ export async function POST(req: NextRequest) {
   if (Array.isArray(body.languages)) updateData.languages = body.languages;
   if (Array.isArray(body.favoriteArtists)) updateData.favorite_artists = body.favoriteArtists;
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("user_language_prefs")
-    .upsert(updateData, { onConflict: "user_id" });
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("user_language_prefs")
+      .upsert(updateData, { onConflict: "user_id" });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+    if (error) {
+      console.error("[preferences POST]", error.message);
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("[preferences POST]", e);
+    return NextResponse.json({ ok: false, error: "Database error" }, { status: 500 });
+  }
 }

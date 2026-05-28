@@ -1,60 +1,83 @@
-import { auth } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { getApiSession, unauthorized } from "@/lib/api-auth";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getApiSession();
+  if (!session) return unauthorized();
+  if (!isSupabaseConfigured()) return NextResponse.json([]);
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("pinned_playlists")
-    .select("*")
-    .eq("user_id", session.spotifyId)
-    .order("pinned_at", { ascending: false });
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("pinned_playlists")
+      .select("*")
+      .eq("user_id", session.spotifyId)
+      .order("pinned_at", { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data, {
-    headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" },
-  });
+    if (error) {
+      console.error("[pinned GET]", error.message);
+      return NextResponse.json([]);
+    }
+    return NextResponse.json(data ?? [], {
+      headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" },
+    });
+  } catch (e) {
+    console.error("[pinned GET]", e);
+    return NextResponse.json([]);
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getApiSession();
+  if (!session) return unauthorized();
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
 
   const body = await req.json();
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("pinned_playlists")
+      .upsert({
+        user_id: session.spotifyId,
+        playlist_id: body.playlist_id,
+        playlist_name: body.playlist_name,
+        playlist_image: body.playlist_image ?? "",
+        pinned_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
 
-  const { data, error } = await supabase
-    .from("pinned_playlists")
-    .upsert({
-      user_id: session.spotifyId,
-      playlist_id: body.playlist_id,
-      playlist_name: body.playlist_name,
-      playlist_image: body.playlist_image ?? "",
-      pinned_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data);
+  } catch (e) {
+    console.error("[pinned POST]", e);
+    return NextResponse.json({ error: "Database error" }, { status: 500 });
+  }
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getApiSession();
+  if (!session) return unauthorized();
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
 
   const { playlist_id } = await req.json();
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("pinned_playlists")
+      .delete()
+      .eq("user_id", session.spotifyId)
+      .eq("playlist_id", playlist_id);
 
-  const { error } = await supabase
-    .from("pinned_playlists")
-    .delete()
-    .eq("user_id", session.spotifyId)
-    .eq("playlist_id", playlist_id);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("[pinned DELETE]", e);
+    return NextResponse.json({ error: "Database error" }, { status: 500 });
+  }
 }
