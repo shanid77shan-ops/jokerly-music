@@ -380,22 +380,22 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
       </div>
 
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {pinned.map((pl) => {
             const tracks = tracksMap[pl.playlist_id];
             return (
               <div
                 key={pl.id}
                 onClick={() => openPlaylist(pl.playlist_id)}
-                className={`rounded-xl overflow-hidden ${playlistCardBorder} cursor-pointer transition-all duration-200 active:scale-[0.98] hover:border-white/25 hover:bg-white/[0.02] shadow-sm`}
+                className={`rounded-lg overflow-hidden ${playlistCardBorder} cursor-pointer transition-all duration-200 active:scale-[0.98] hover:border-white/25 hover:bg-white/[0.02]`}
                 style={{ background: "var(--card)" }}
               >
                 <div className="relative aspect-square w-full overflow-hidden border-b border-white/[0.08]" style={{ background: "var(--surface)" }}>
-                  <CoverArt tracks={tracks} imageUrl={pl.playlist_image || null} name={pl.playlist_name} size={80} />
-                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#E8282B] border border-black/20 shadow" />
+                  <CoverArt tracks={tracks} imageUrl={pl.playlist_image || null} name={pl.playlist_name} size={52} />
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
                 </div>
-                <div className="p-2">
-                  <p className="text-white text-[10px] font-semibold truncate leading-tight">{pl.playlist_name}</p>
+                <div className="p-1.5">
+                  <p className="text-white text-[9px] font-semibold truncate leading-tight">{pl.playlist_name}</p>
                 </div>
               </div>
             );
@@ -412,14 +412,14 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
               <div
                 key={pl.id}
                 onClick={() => openPlaylist(pl.playlist_id)}
-                className="flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-white/[0.04]"
+                className="flex items-center gap-2.5 p-2.5 cursor-pointer transition-colors hover:bg-white/[0.04]"
               >
-                <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-white/[0.10]" style={{ background: "var(--surface)" }}>
-                  <CoverArt tracks={tracks} imageUrl={pl.playlist_image || null} name={pl.playlist_name} size={48} />
-                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
+                <div className="relative w-10 h-10 rounded-md overflow-hidden shrink-0 border border-white/[0.10]" style={{ background: "var(--surface)" }}>
+                  <CoverArt tracks={tracks} imageUrl={pl.playlist_image || null} name={pl.playlist_name} size={40} />
+                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
                 </div>
-                <p className="flex-1 text-white text-sm font-semibold truncate">{pl.playlist_name}</p>
-                <Play size={14} className="shrink-0 text-white/25" />
+                <p className="flex-1 text-white text-xs font-semibold truncate">{pl.playlist_name}</p>
+                <Play size={12} className="shrink-0 text-white/25" />
               </div>
             );
           })}

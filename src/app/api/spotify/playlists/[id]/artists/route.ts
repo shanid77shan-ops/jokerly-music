@@ -76,8 +76,64 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as { selectedArtists?: unknown };
   const incoming = normalizeIncomingArtists(body.selectedArtists);
+
+  const supabase = await createClient();
+  const { data: playlist, error: playlistError } = await supabase
+    .from("playlists")
+    .select("id, description")
+    .eq("id", id)
+    .eq("user_id", session.spotifyId)
+    .single();
+
+  if (playlistError || !playlist) {
+    return NextResponse.json({ error: "Playlist not found" }, { status: 404 });
+  }
+
+  const previous = parseMixArtistRecords(playlist.description);
+
   if (incoming.length === 0) {
-    return NextResponse.json({ error: "At least one artist required" }, { status: 400 });
+    const { error: updateError } = await supabase
+      .from("playlists")
+      .update({ description: "" })
+      .eq("id", id)
+      .eq("user_id", session.spotifyId);
+
+    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+
+    let removedCount = 0;
+    if (previous.length > 0) {
+      const { data: tracks, error: tracksError } = await supabase
+        .from("playlist_tracks")
+        .select("id, track_artist")
+        .eq("playlist_id", id)
+        .eq("user_id", session.spotifyId);
+
+      if (tracksError) return NextResponse.json({ error: tracksError.message }, { status: 500 });
+
+      const idsToRemove = (tracks ?? [])
+        .filter((track) =>
+          previous.some((artist) => trackMatchesArtist(track.track_artist, artist.name))
+        )
+        .map((track) => track.id);
+
+      if (idsToRemove.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("playlist_tracks")
+          .delete()
+          .in("id", idsToRemove)
+          .eq("user_id", session.spotifyId);
+
+        if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
+        removedCount = idsToRemove.length;
+      }
+    }
+
+    return NextResponse.json({
+      artists: [],
+      description: "",
+      addedCount: 0,
+      removedCount,
+    });
   }
 
   let selectedArtists = await resolveMixArtistsServer(incoming, session.accessToken);
@@ -96,19 +152,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     );
   }
 
-  const supabase = await createClient();
-  const { data: playlist, error: playlistError } = await supabase
-    .from("playlists")
-    .select("id, description")
-    .eq("id", id)
-    .eq("user_id", session.spotifyId)
-    .single();
-
-  if (playlistError || !playlist) {
-    return NextResponse.json({ error: "Playlist not found" }, { status: 404 });
-  }
-
-  const previous = parseMixArtistRecords(playlist.description);
   const { added, removed } = diffMixArtists(previous, selectedArtists);
 
   const { error: updateError } = await supabase

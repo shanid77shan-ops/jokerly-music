@@ -146,19 +146,20 @@ export default function EditMixArtistsSheet({
   };
 
   const removeArtist = (key: string) => {
-    setSelectedArtists((prev) => prev.filter((artist) => (artist.id || artist.name) !== key));
+    const next = selectedArtists.filter((artist) => (artist.id || artist.name) !== key);
+    setSelectedArtists(next);
+    if (next.length === 0) {
+      void saveArtists([]);
+    }
   };
 
-  const saveArtists = async () => {
-    if (selectedArtists.length === 0) {
-      toast("Keep at least one artist");
-      return;
-    }
+  const saveArtists = async (artistsOverride?: MixArtist[]) => {
+    const toPersist = artistsOverride ?? selectedArtists;
 
     setSaving(true);
     try {
-      let toSave = selectedArtists;
-      if (mixArtistsNeedResolve(toSave)) {
+      let toSave = toPersist;
+      if (toSave.length > 0 && mixArtistsNeedResolve(toSave)) {
         toSave = await resolveMixArtistsClient(toSave);
         setSelectedArtists(toSave);
       }
@@ -193,7 +194,11 @@ export default function EditMixArtistsSheet({
       const parts: string[] = [];
       if ((data.addedCount ?? 0) > 0) parts.push(`${data.addedCount} tracks added`);
       if ((data.removedCount ?? 0) > 0) parts.push(`${data.removedCount} tracks removed`);
-      toast(parts.length > 0 ? parts.join(", ") : "Artists updated");
+      if (toSave.length === 0) {
+        toast(parts.length > 0 ? parts.join(", ") : "Mix artists cleared");
+      } else {
+        toast(parts.length > 0 ? parts.join(", ") : "Artists updated");
+      }
       onClose();
     } catch (e) {
       toast((e as Error).message ?? "Could not update artists");
@@ -355,7 +360,7 @@ export default function EditMixArtistsSheet({
           <button
             type="button"
             onClick={() => void saveArtists()}
-            disabled={saving || resolving || selectedArtists.length === 0}
+            disabled={saving || resolving}
             className="w-full py-3.5 rounded-2xl bg-[#E8282B] hover:bg-[#c0201f] disabled:opacity-40 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
           >
             {saving ? (

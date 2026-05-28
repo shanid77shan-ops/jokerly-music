@@ -123,11 +123,13 @@ function FeedSkeleton() {
 }
 function PinnedSkeleton() {
   return (
-    <div className="space-y-2">
-      {[0,1,2].map((i) => (
-        <div key={i} className="rounded-2xl border border-white/[0.06] p-3 flex items-center gap-3" style={{ background: "var(--card)" }}>
-          <div className="w-11 h-11 rounded-xl bg-white/[0.05] animate-pulse shrink-0" />
-          <SkeletonLine w="w-40" h="h-4" />
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="rounded-lg border border-white/[0.06] overflow-hidden animate-pulse" style={{ background: "var(--card)" }}>
+          <div className="aspect-square bg-white/[0.05]" />
+          <div className="p-1.5">
+            <div className="h-2 rounded-full w-3/4 bg-white/[0.05]" />
+          </div>
         </div>
       ))}
     </div>
