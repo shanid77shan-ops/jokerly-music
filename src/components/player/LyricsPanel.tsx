@@ -53,8 +53,13 @@ export default function LyricsPanel({ track, progressMs, fullscreen }: Props) {
           syncedLines?: LrcLine[];
           plainText?: string;
           notFound?: boolean;
+          error?: string;
         };
-        if (!response.ok || data.notFound) {
+        if (!response.ok) {
+          setNotFound(true);
+          return;
+        }
+        if (data.notFound || data.error) {
           setNotFound(true);
           return;
         }
