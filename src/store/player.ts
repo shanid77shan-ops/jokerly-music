@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { getSession } from "next-auth/react";
+import { checkPlaybackEnvironment, formatPlaybackEnvironmentError } from "@/lib/eme-support";
 export interface PlayableTrack {
   name: string;
   artist: string;
@@ -362,6 +363,12 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     set({ accessToken, sdkError: null });
     if (get().player) return;
 
+    const env = await checkPlaybackEnvironment();
+    if (!env.ok) {
+      set({ isPlayerReady: false, sdkError: env.message });
+      return;
+    }
+
     let Spotify: SpotifyPlayerCtor | null = null;
     try {
       Spotify = await loadSpotifySdk();
@@ -472,8 +479,28 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
       }
     });
 
-    player.addListener("initialization_error", () => {
-      set({ isPlayerReady: false, sdkError: "Player failed to initialize. Reload the page." });
+    player.addListener("initialization_error", (payload) => {
+      const message =
+        typeof payload === "object" && payload !== null && "message" in payload
+          ? String((payload as { message?: string }).message ?? "")
+          : "";
+      set({
+        isPlayerReady: false,
+        sdkError: formatPlaybackEnvironmentError(message) || "Player failed to initialize. Reload the page.",
+      });
+    });
+
+    player.addListener("playback_error", (payload) => {
+      const message =
+        typeof payload === "object" && payload !== null && "message" in payload
+          ? String((payload as { message?: string }).message ?? "")
+          : "";
+      clearPlayRetry(true);
+      set({
+        isPlaying: false,
+        isTransitioning: false,
+        sdkError: formatPlaybackEnvironmentError(message) || "Playback failed. Try another browser or device.",
+      });
     });
     player.addListener("authentication_error", async () => {
       suppressAutoResumeUntil = Date.now() + 60_000;

@@ -2,6 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@ffmpeg-installer/ffmpeg"],
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Permissions-Policy", value: "encrypted-media=(self)" },
+        ],
+      },
+    ];
+  },
   outputFileTracingIncludes: {
     "/api/spotify/identify": ["./bin/**"],
   },

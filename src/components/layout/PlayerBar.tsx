@@ -362,7 +362,10 @@ export default function PlayerBar() {
       <div className="fixed bottom-16 sm:bottom-0 left-0 right-0 z-40 border-t border-white/[0.07] px-4 py-3 flex items-center justify-between gap-3"
         style={{ background: "rgba(7,5,18,0.97)", backdropFilter: "blur(20px)" }}>
         <p className="text-[#E8282B] text-sm truncate">{sdkError}</p>
-        {sdkError.includes("Premium") || sdkError.includes("auth") ? null : (
+        {sdkError.includes("Premium") ||
+        sdkError.includes("auth") ||
+        sdkError.includes("DRM") ||
+        sdkError.includes("Protected audio") ? null : (
           <button onClick={() => signOut({ callbackUrl: "/login" })}
             className="shrink-0 text-xs bg-[#E8282B] text-white px-3 py-1.5 rounded-xl font-medium">
             Re-login
