@@ -62,13 +62,13 @@ body::after {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #3a1010 transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.45) transparent;
 }
 
 *::-webkit-scrollbar { width: 4px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background: #3a1010; border-radius: 99px; }
-*::-webkit-scrollbar-thumb:hover { background: #5a1818; }
+*::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.45); border-radius: 99px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.75); }
 
 /* ── Equalizer bars (playing indicator) ── */
 @keyframes eq-bar {
