@@ -30,6 +30,7 @@ interface OfflineState {
   isDownloading: (uri: string, name: string, artist: string) => boolean;
   downloadTrack: (track: DownloadableTrack) => Promise<boolean>;
   removeDownload: (uri: string, name: string, artist: string) => Promise<void>;
+  clearAllDownloads: () => Promise<void>;
   downloadPlaylist: (tracks: DownloadableTrack[]) => Promise<{ ok: number; fail: number }>;
 }
 
