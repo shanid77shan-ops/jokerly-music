@@ -12,7 +12,7 @@ export function formatPlaybackEnvironmentError(raw?: string): string {
     return "Protected audio (DRM) is blocked in this browser. Use HTTPS, allow protected content in site settings, and try Chrome, Edge, or Safari. Privacy extensions can also block playback.";
   }
   if (text.includes("secure context") || text.includes("only secure origins")) {
-    return "Playback requires HTTPS. Open https://www.devshanidp.xyz (not http://).";
+    return "Playback requires HTTPS. Open https://music.devshanidp.xyz (not http://).";
   }
   return raw?.trim() || "Playback is not supported in this browser.";
 }
@@ -20,7 +20,7 @@ export function formatPlaybackEnvironmentError(raw?: string): string {
 export function getInsecurePlaybackMessage(): string | null {
   if (typeof window === "undefined") return null;
   if (!window.isSecureContext) {
-    return "Playback requires HTTPS. Open https://www.devshanidp.xyz (not http://).";
+    return "Playback requires HTTPS. Open https://music.devshanidp.xyz (not http://).";
   }
   return null;
 }

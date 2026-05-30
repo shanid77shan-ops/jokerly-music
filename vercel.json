@@ -1,4 +1,12 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.devshanidp.xyz" }],
+      "destination": "https://music.devshanidp.xyz/:path*",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/manifest.json",
