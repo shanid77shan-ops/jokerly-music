@@ -13,6 +13,8 @@ interface Props {
   onDownloadOffline: () => void;
   onOpen?: () => void;
   className?: string;
+  /** overlay = on artwork; card = grid footer; default = list row */
+  variant?: "default" | "overlay" | "card";
 }
 
 export default function PlaylistActionsMenu({
@@ -25,6 +27,7 @@ export default function PlaylistActionsMenu({
   onDownloadOffline,
   onOpen,
   className = "",
+  variant = "default",
 }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -61,6 +64,18 @@ export default function PlaylistActionsMenu({
     </button>
   );
 
+  const triggerClass =
+    variant === "overlay"
+      ? "p-1.5 rounded-lg bg-black/70 backdrop-blur-md border border-white/25 text-white shadow-lg hover:bg-black/85 transition-colors"
+      : variant === "card"
+        ? "p-1 rounded-md bg-white/[0.10] border border-white/15 text-white hover:bg-white/[0.18] transition-colors shrink-0"
+        : "p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors";
+
+  const menuPosition =
+    variant === "card"
+      ? "absolute right-0 bottom-full mb-1"
+      : "absolute right-0 top-full mt-1";
+
   return (
     <div ref={rootRef} className={`relative ${className}`} onClick={(e) => e.stopPropagation()}>
       <button
@@ -69,15 +84,16 @@ export default function PlaylistActionsMenu({
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/[0.08] transition-colors"
+        className={triggerClass}
         aria-label="Playlist options"
+        aria-expanded={open}
       >
-        <MoreVertical size={16} />
+        <MoreVertical size={variant === "card" ? 14 : 16} strokeWidth={2.5} />
       </button>
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-xl border border-white/10 py-1 shadow-2xl overflow-hidden"
+          className={`${menuPosition} z-[80] min-w-[200px] rounded-xl border border-white/10 py-1 shadow-2xl overflow-hidden`}
           style={{ background: "rgba(12,4,6,0.98)", backdropFilter: "blur(16px)" }}
         >
           {onOpen &&

@@ -886,50 +886,54 @@ export default function PlaylistsClient() {
               <div
                 key={pl.id}
                 onClick={() => !isDeleting && openPlaylist(pl)}
-                className={`rounded-lg overflow-hidden ${playlistCardBorder} cursor-pointer transition-all duration-200 active:scale-[0.98] ${isDeleting ? "opacity-40 pointer-events-none" : "hover:border-white/25 hover:bg-white/[0.02]"}`}
+                className={`rounded-lg overflow-visible ${playlistCardBorder} cursor-pointer transition-all duration-200 active:scale-[0.98] ${isDeleting ? "opacity-40 pointer-events-none" : "hover:border-white/25 hover:bg-white/[0.02]"}`}
                 style={{ background: "var(--card)" }}
               >
-                <div className="relative aspect-square w-full overflow-hidden border-b border-white/[0.08]" style={{ background: "var(--surface)" }}>
+                <div className="relative aspect-square w-full overflow-hidden border-b border-white/[0.08] rounded-t-lg" style={{ background: "var(--surface)" }}>
                   <CoverArt tracks={tracks} imageUrl={pl.images?.[0]?.url} name={pl.name} size={56} />
-                  <div className="absolute top-1 right-1 z-10">
-                    <PlaylistActionsMenu
-                      isPinned={isPinned}
-                      pinning={pinning === pl.id}
-                      trackCount={tracks?.length ?? pl.tracks?.total ?? 0}
-                      downloadingPlaylist={downloadingPlaylistId === pl.id}
-                      onShufflePlay={() => {
-                        const list = tracksMap[pl.id] ?? [];
-                        if (list.length) shufflePlayPlaylist(list);
-                        else toast("Open playlist to load tracks first");
-                      }}
-                      onTogglePin={() => togglePin(pl)}
-                      onDownloadOffline={() => {
-                        const list = tracksMap[pl.id] ?? [];
-                        if (list.length) downloadPlaylistOfflineTracks(pl.id, list);
-                        else toast("Open playlist to load tracks first");
-                      }}
-                      onOpen={() => openPlaylist(pl)}
-                    />
-                  </div>
                   {isPinned && (
-                    <span className="absolute top-1 left-1 w-2 h-2 rounded-full bg-[#E8282B] border border-black/30 shadow" />
+                    <span className="absolute top-1 left-1 z-10 w-2 h-2 rounded-full bg-[#E8282B] border border-black/30 shadow" />
                   )}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.35)" }}>
-                    <div className="w-6 h-6 rounded-full bg-[#E8282B] flex items-center justify-center shadow-lg">
+                  <div
+                    className="absolute inset-0 z-[1] flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none"
+                    style={{ background: "rgba(0,0,0,0.35)" }}
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#E8282B] flex items-center justify-center shadow-lg pointer-events-none">
                       <Play size={10} fill="white" className="text-white ml-0.5" />
                     </div>
                   </div>
                 </div>
-                <div className="p-1.5">
-                  <p className="text-white text-[10px] font-semibold truncate leading-tight">{pl.name}</p>
-                  {mixArtists.length > 0 && (
-                    <p className="text-[9px] mt-0.5 truncate leading-tight" style={{ color: "rgba(255,255,255,0.45)" }}>
-                      {mixArtists.join(" · ")}
+                <div className="p-1.5 flex items-start gap-1 relative z-20">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-[10px] font-semibold truncate leading-tight">{pl.name}</p>
+                    {mixArtists.length > 0 && (
+                      <p className="text-[9px] mt-0.5 truncate leading-tight" style={{ color: "rgba(255,255,255,0.45)" }}>
+                        {mixArtists.join(" · ")}
+                      </p>
+                    )}
+                    <p className="text-[9px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
+                      {pl.tracks?.total ?? 0} tracks
                     </p>
-                  )}
-                  <p className="text-[9px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
-                    {pl.tracks?.total ?? 0} tracks
-                  </p>
+                  </div>
+                  <PlaylistActionsMenu
+                    variant="card"
+                    isPinned={isPinned}
+                    pinning={pinning === pl.id}
+                    trackCount={tracks?.length ?? pl.tracks?.total ?? 0}
+                    downloadingPlaylist={downloadingPlaylistId === pl.id}
+                    onShufflePlay={() => {
+                      const list = tracksMap[pl.id] ?? [];
+                      if (list.length) shufflePlayPlaylist(list);
+                      else toast("Open playlist to load tracks first");
+                    }}
+                    onTogglePin={() => togglePin(pl)}
+                    onDownloadOffline={() => {
+                      const list = tracksMap[pl.id] ?? [];
+                      if (list.length) downloadPlaylistOfflineTracks(pl.id, list);
+                      else toast("Open playlist to load tracks first");
+                    }}
+                    onOpen={() => openPlaylist(pl)}
+                  />
                 </div>
               </div>
             );

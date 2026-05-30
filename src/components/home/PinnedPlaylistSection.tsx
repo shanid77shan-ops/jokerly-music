@@ -473,26 +473,25 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
               <div
                 key={pl.id}
                 onClick={() => openPlaylist(pl.playlist_id)}
-                className={`rounded-lg overflow-hidden ${playlistCardBorder} cursor-pointer transition-all duration-200 active:scale-[0.98] hover:border-white/25 hover:bg-white/[0.02]`}
+                className={`rounded-lg overflow-visible ${playlistCardBorder} cursor-pointer transition-all duration-200 active:scale-[0.98] hover:border-white/25 hover:bg-white/[0.02]`}
                 style={{ background: "var(--card)" }}
               >
-                <div className="relative aspect-square w-full overflow-hidden border-b border-white/[0.08]" style={{ background: "var(--surface)" }}>
+                <div className="relative aspect-square w-full overflow-hidden border-b border-white/[0.08] rounded-t-lg" style={{ background: "var(--surface)" }}>
                   <CoverArt tracks={tracks} imageUrl={pl.playlist_image || null} name={pl.playlist_name} size={52} />
-                  <div className="absolute top-0.5 right-0.5 z-10">
-                    <PlaylistActionsMenu
-                      isPinned
-                      trackCount={tracks?.length ?? 0}
-                      downloadingPlaylist={downloadingPlaylistId === pl.playlist_id}
-                      onShufflePlay={() => shufflePlay(pl.playlist_id)}
-                      onTogglePin={() => toast("Pinned to speed dial")}
-                      onDownloadOffline={() => downloadOffline(pl.playlist_id)}
-                      onOpen={() => openPlaylist(pl.playlist_id)}
-                    />
-                  </div>
-                  <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
+                  <span className="absolute top-1 left-1 z-10 w-1.5 h-1.5 rounded-full bg-[#E8282B] border border-black/20 shadow" />
                 </div>
-                <div className="p-1.5">
-                  <p className="text-white text-[9px] font-semibold truncate leading-tight">{pl.playlist_name}</p>
+                <div className="p-1.5 flex items-center gap-1 relative z-20">
+                  <p className="flex-1 min-w-0 text-white text-[9px] font-semibold truncate leading-tight">{pl.playlist_name}</p>
+                  <PlaylistActionsMenu
+                    variant="card"
+                    isPinned
+                    trackCount={tracks?.length ?? 0}
+                    downloadingPlaylist={downloadingPlaylistId === pl.playlist_id}
+                    onShufflePlay={() => shufflePlay(pl.playlist_id)}
+                    onTogglePin={() => toast("Pinned to speed dial")}
+                    onDownloadOffline={() => downloadOffline(pl.playlist_id)}
+                    onOpen={() => openPlaylist(pl.playlist_id)}
+                  />
                 </div>
               </div>
             );
