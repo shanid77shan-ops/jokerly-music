@@ -27,11 +27,9 @@ export default function FloatingNav() {
     router.push(target, { scroll: false });
   };
 
-  const bottomClass = isExpanded
-    ? "bottom-[min(42vh,320px)]"
-    : hasPlayer
-      ? "bottom-[104px]"
-      : "bottom-[5.5rem]";
+  const bottomClass = hasPlayer ? "bottom-[104px]" : "bottom-[5.5rem]";
+
+  if (isExpanded) return null;
 
   const btn = (target: NavTarget, icon: React.ReactNode, label: string) => (
     <button
