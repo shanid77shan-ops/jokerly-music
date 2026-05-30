@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { Download, Music, Play, PlayCircle, Trash2, Loader2, WifiOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -22,6 +22,8 @@ export default function DownloadedClient() {
   const hydrated = useOfflineStore((s) => s.hydrated);
   const tracks = useOfflineStore((s) => s.tracks);
   const removeDownload = useOfflineStore((s) => s.removeDownload);
+  const clearAllDownloads = useOfflineStore((s) => s.clearAllDownloads);
+  const [clearingAll, setClearingAll] = useState(false);
   const { setQueueAndPlay, currentTrack, isPlaying } = usePlayerStore();
 
   useEffect(() => {
@@ -71,28 +73,43 @@ export default function DownloadedClient() {
 
   return (
     <div className="w-full space-y-5">
-      <div>
-        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Download size={22} className="text-[#E8282B]" />
-          Downloaded
-        </h2>
-        <p className="text-xs mt-1 flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
-          <WifiOff size={12} />
-          {tracks.length > 0
-            ? `${tracks.length} track${tracks.length !== 1 ? "s" : ""} · plays offline (30s preview)`
-            : "Save tracks from playlists or the player to listen offline"}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <Download size={22} className="text-[#E8282B]" />
+            Downloaded
+          </h2>
+          <p className="text-xs mt-1 flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+            <WifiOff size={12} />
+            {tracks.length > 0
+              ? `${tracks.length} track${tracks.length !== 1 ? "s" : ""} · plays offline (30s preview)`
+              : "Save tracks from playlists or the player to listen offline"}
+          </p>
+        </div>
+        {tracks.length > 0 && (
+          <button
+            type="button"
+            onClick={() => void handleDeleteAll()}
+            disabled={clearingAll}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-40 transition-colors"
+          >
+            {clearingAll ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            Delete all
+          </button>
+        )}
       </div>
 
       {tracks.length > 0 && (
-        <button
-          type="button"
-          onClick={playAll}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-white font-bold text-sm transition-all active:scale-95 shadow-lg"
-          style={{ background: "#E8282B", boxShadow: "0 4px 16px rgba(232,40,43,0.35)" }}
-        >
-          <PlayCircle size={16} /> Play all offline
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={playAll}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-white font-bold text-sm transition-all active:scale-95 shadow-lg"
+            style={{ background: "#E8282B", boxShadow: "0 4px 16px rgba(232,40,43,0.35)" }}
+          >
+            <PlayCircle size={16} /> Play all offline
+          </button>
+        </div>
       )}
 
       {tracks.length === 0 ? (

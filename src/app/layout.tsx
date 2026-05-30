@@ -7,6 +7,7 @@ import ServiceWorkerRegister from "@/components/layout/ServiceWorkerRegister";
 import InstallPrompt from "@/components/layout/InstallPrompt";
 import BackNavigationHandler from "@/components/layout/BackNavigationHandler";
 import OfflineBootstrap from "@/components/layout/OfflineBootstrap";
+import GlobalFloatingNav from "@/components/layout/GlobalFloatingNav";
 import { APP_NAME, APP_TAGLINE } from "@/lib/branding";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <BackNavigationHandler />
             <OfflineBootstrap />
             {children}
+            <GlobalFloatingNav />
           </SessionWrapper>
         </ThemeProvider>
         <ServiceWorkerRegister />

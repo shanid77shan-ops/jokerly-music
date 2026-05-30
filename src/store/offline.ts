@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import {
+  clearAllOfflineTracks,
   getOfflineTrack,
   listAllOfflineTracks,
   listOfflineTrackKeys,
@@ -122,6 +123,11 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
       downloadedKeys: new Set([...s.downloadedKeys].filter((k) => k !== key)),
       tracks: s.tracks.filter((t) => t.key !== key),
     }));
+  },
+
+  clearAllDownloads: async () => {
+    await clearAllOfflineTracks();
+    set({ downloadedKeys: new Set(), tracks: [] });
   },
 
   downloadPlaylist: async (tracks) => {
