@@ -8,6 +8,7 @@ import { usePlayerStore, PlayableTrack } from "@/store/player";
 import { useLikesStore } from "@/store/likes";
 import AddToPlaylistModal from "@/components/playlist/AddToPlaylistModal";
 import ExportToYouTubeMusicModal from "@/components/export/ExportToYouTubeMusicModal";
+import { useBackHandler } from "@/hooks/useBackHandler";
 
 interface Props {
   artist: SpotifyArtist;
@@ -25,6 +26,8 @@ function toPlayable(t: SpotifyTrack): PlayableTrack {
 }
 
 export default function ArtistSheet({ artist, onClose }: Props) {
+  useBackHandler(true, onClose);
+
   const [info, setInfo] = useState<SpotifyArtist | null>(null);
   const [topTracks, setTopTracks] = useState<SpotifyTrack[]>([]);
   const [moreTracks, setMoreTracks] = useState<SpotifyTrack[]>([]);

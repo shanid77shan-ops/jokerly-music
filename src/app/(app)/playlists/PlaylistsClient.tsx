@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useBackHandler } from "@/hooks/useBackHandler";
 import { createPortal } from "react-dom";
 import { ListMusic, Plus, Pencil, Pin, Loader2, Check, Trash2, Music, Play, Trash, PlayCircle, GripVertical, ListPlus, ArrowLeft, FolderInput, UserCircle2, Mic2, Heart, Download, Users, X, LayoutGrid, List } from "lucide-react";
 import {
@@ -202,6 +203,17 @@ export default function PlaylistsClient() {
   );
 
   const selectedPlaylist = playlists.find((p) => p.id === selectedId) ?? null;
+
+  useBackHandler(!!selectedId, () => {
+    setSelectedId(null);
+    setEdit(null);
+    setAddFromPlaylist(false);
+  });
+  useBackHandler(showArtistMixSheet, () => setShowArtistMixSheet(false));
+  useBackHandler(editArtistsOpen, () => setEditArtistsOpen(false));
+  useBackHandler(!!addModal, () => setAddModal(null));
+  useBackHandler(addFromPlaylist, () => setAddFromPlaylist(false));
+  useBackHandler(!!edit, () => setEdit(null));
 
   const handleDragEnd = (event: DragEndEvent, playlistId: string) => {
     const { active, over } = event;

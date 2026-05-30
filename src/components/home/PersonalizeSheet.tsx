@@ -5,6 +5,7 @@ import { X, Search, Check, Loader2, Music2, Mic2, Plus } from "lucide-react";
 import { LANGUAGES } from "@/lib/languages";
 import { SpotifyArtist, artistImage } from "@/types/spotify";
 import Image from "next/image";
+import { useBackHandler } from "@/hooks/useBackHandler";
 
 export interface FavoriteArtist {
   id: string;
@@ -20,6 +21,8 @@ interface Props {
 }
 
 export default function PersonalizeSheet({ initialLangs, initialArtists, onSave, onClose }: Props) {
+  useBackHandler(true, onClose);
+
   const [selectedLangs, setSelectedLangs] = useState<string[]>(initialLangs);
   const [selectedArtists, setSelectedArtists] = useState<FavoriteArtist[]>(initialArtists);
   const [artistQuery, setArtistQuery] = useState("");

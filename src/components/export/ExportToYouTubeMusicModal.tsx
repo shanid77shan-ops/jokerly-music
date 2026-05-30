@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Loader2, Copy, Check } from "lucide-react";
 import { useToastStore } from "@/store/toast";
+import { useBackHandler } from "@/hooks/useBackHandler";
 
 interface Track {
   name: string;
@@ -18,6 +19,8 @@ interface Props {
 type Step = "cookies" | "confirm" | "exporting" | "success";
 
 export default function ExportToYouTubeMusicModal({ title, tracks, onClose }: Props) {
+  useBackHandler(true, onClose);
+
   const [step, setStep] = useState<Step>("cookies");
   const [cookieString, setCookieString] = useState("");
   const [playlistName, setPlaylistName] = useState(title);

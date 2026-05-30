@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, Loader2, Music, ListMusic, ArrowLeft, Plus, Check, AlertCircle } from "lucide-react";
 import { SpotifyPlaylist } from "@/types";
 import Image from "next/image";
+import { useBackHandler } from "@/hooks/useBackHandler";
 
 interface PlaylistTrack {
   id: string;
@@ -24,6 +25,8 @@ interface Props {
 let playlistCache: SpotifyPlaylist[] | null = null;
 
 export default function AddFromPlaylistModal({ targetPlaylistId, targetPlaylistName, onClose, onTracksAdded }: Props) {
+  useBackHandler(true, onClose);
+
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>(playlistCache ?? []);
   const [loadingPlaylists, setLoadingPlaylists] = useState(true);
   const [sourceId, setSourceId] = useState<string | null>(null);

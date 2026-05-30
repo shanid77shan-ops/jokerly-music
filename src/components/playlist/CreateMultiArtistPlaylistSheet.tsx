@@ -7,6 +7,7 @@ import { formatMixDescription } from "@/lib/playlist-meta";
 import { SpotifyPlaylist } from "@/types";
 import { SpotifyArtist, artistImage } from "@/types/spotify";
 import { useToastStore } from "@/store/toast";
+import { useBackHandler } from "@/hooks/useBackHandler";
 
 interface SelectedArtist {
   id: string;
@@ -21,6 +22,8 @@ interface Props {
 }
 
 export default function CreateMultiArtistPlaylistSheet({ open, onClose, onCreated }: Props) {
+  useBackHandler(open, onClose);
+
   const [name, setName] = useState("");
   const [artistQuery, setArtistQuery] = useState("");
   const [artistResults, setArtistResults] = useState<SpotifyArtist[]>([]);

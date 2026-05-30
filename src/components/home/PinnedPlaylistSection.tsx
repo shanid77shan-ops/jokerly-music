@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useBackHandler } from "@/hooks/useBackHandler";
 import Image from "next/image";
 import { Pin, Music, Play, Loader2, PlayCircle, GripVertical, ListPlus, Trash, ArrowLeft, ListMusic, FolderInput, LayoutGrid, List } from "lucide-react";
 import {
@@ -171,6 +172,10 @@ export default function PinnedPlaylistSection({ pinned }: Props) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   );
+
+  useBackHandler(!!selectedId, () => setSelectedId(null));
+  useBackHandler(!!addModal, () => setAddModal(null));
+  useBackHandler(addFromPlaylist, () => setAddFromPlaylist(false));
 
   // Prefetch all pinned playlist tracks for cover art
   useEffect(() => {

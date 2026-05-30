@@ -7,6 +7,7 @@ import { X, User, Settings, Bell, Loader2, RefreshCw } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { APP_NAME, APP_TAGLINE } from "@/lib/branding";
 import { SPOTIFY_SCOPES } from "@/lib/spotify-scopes";
+import { useBackHandler } from "@/hooks/useBackHandler";
 
 function SettingsModal({ onClose }: { onClose: () => void }) {
   const { data: session } = useSession();
@@ -201,6 +202,8 @@ export default function Topbar() {
   const { data: session } = useSession();
   const [showSettings, setShowSettings] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  useBackHandler(showSettings, () => setShowSettings(false));
   const pathname = usePathname();
   const router = useRouter();
   const sessionError = (session as { error?: string } | null)?.error;

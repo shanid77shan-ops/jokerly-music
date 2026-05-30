@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { usePlayerStore } from "@/store/player";
+import { closeTopBackLayer, hasBackLayers } from "@/store/back-stack";
 import { isHomePath } from "@/lib/home-paths";
-
-/** Push a history entry so Android/TWA back does not immediately close the app. */
-function pushHistoryEntry() {
-  window.history.pushState({ jkmBack: true }, "", window.location.href);
-}
+import { pushHistoryEntry } from "@/lib/back-history";
+import ExitAppDialog from "@/components/layout/ExitAppDialog";
 
 function closePlayerOverlays(): boolean {
   const { isQueueOpen, isPlayerExpanded } = usePlayerStore.getState();
@@ -24,15 +22,15 @@ function closePlayerOverlays(): boolean {
 }
 
 /**
- * Hardware back (TWA / PWA): close overlays first, then previous route.
- * Only exit the app from the home page with nothing open.
+ * Hardware back (TWA / PWA): sheets/modals → player overlays → previous route → exit confirm on home.
  */
 export default function BackNavigationHandler() {
   const pathname = usePathname();
   const router = useRouter();
   const stackRef = useRef<string[]>([]);
   const skipStackSyncRef = useRef(false);
-  const isFirstPathRef = useRef(true);
+  const allowAppExitRef = useRef(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
 
   useEffect(() => {
     if (skipStackSyncRef.current) {
@@ -51,13 +49,10 @@ export default function BackNavigationHandler() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (isHomePath(pathname)) return;
-
-    if (isFirstPathRef.current) {
-      isFirstPathRef.current = false;
+    if (!isHomePath(pathname)) {
+      pushHistoryEntry();
+      return;
     }
-
-    // Non-home routes get a history entry so hardware back does not close the TWA.
     pushHistoryEntry();
   }, [pathname]);
 
@@ -71,47 +66,91 @@ export default function BackNavigationHandler() {
     });
   }, []);
 
-  useEffect(() => {
-    const onPopState = () => {
-      if (closePlayerOverlays()) {
-        pushHistoryEntry();
-        return;
-      }
+  const stayInApp = useCallback(() => {
+    pushHistoryEntry();
+  }, []);
 
-      const urlPath = window.location.pathname;
-      const stack = stackRef.current;
+  const handlePopState = useCallback(() => {
+    if (allowAppExitRef.current) {
+      allowAppExitRef.current = false;
+      setShowExitDialog(false);
+      return;
+    }
 
-      if (urlPath !== pathname) {
-        while (stack.length > 1 && stack[stack.length - 1] !== urlPath) {
-          stack.pop();
-        }
-        if (stack[stack.length - 1] !== urlPath) {
-          stack.push(urlPath);
-        }
-        skipStackSyncRef.current = true;
-        return;
-      }
+    if (closeTopBackLayer()) {
+      stayInApp();
+      return;
+    }
 
-      if (stack.length > 1) {
+    if (closePlayerOverlays()) {
+      stayInApp();
+      return;
+    }
+
+    const urlPath = window.location.pathname;
+    const stack = stackRef.current;
+
+    if (urlPath !== pathname) {
+      while (stack.length > 1 && stack[stack.length - 1] !== urlPath) {
         stack.pop();
-        const previous = stack[stack.length - 1];
-        skipStackSyncRef.current = true;
-        router.push(previous);
-        pushHistoryEntry();
-        return;
       }
-
-      if (!isHomePath(pathname)) {
-        skipStackSyncRef.current = true;
-        stackRef.current = ["/"];
-        router.push("/");
-        pushHistoryEntry();
+      if (stack[stack.length - 1] !== urlPath) {
+        stack.push(urlPath);
       }
-    };
+      skipStackSyncRef.current = true;
+      setShowExitDialog(false);
+      return;
+    }
 
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [pathname, router]);
+    if (stack.length > 1) {
+      stack.pop();
+      const previous = stack[stack.length - 1];
+      skipStackSyncRef.current = true;
+      setShowExitDialog(false);
+      router.push(previous);
+      stayInApp();
+      return;
+    }
 
-  return null;
+    if (!isHomePath(pathname)) {
+      skipStackSyncRef.current = true;
+      stackRef.current = ["/"];
+      setShowExitDialog(false);
+      router.push("/");
+      stayInApp();
+      return;
+    }
+
+    if (hasBackLayers()) {
+      stayInApp();
+      return;
+    }
+
+    setShowExitDialog(true);
+    stayInApp();
+  }, [pathname, router, stayInApp]);
+
+  useEffect(() => {
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [handlePopState]);
+
+  const cancelExit = useCallback(() => {
+    setShowExitDialog(false);
+    stayInApp();
+  }, [stayInApp]);
+
+  const confirmExit = useCallback(() => {
+    setShowExitDialog(false);
+    allowAppExitRef.current = true;
+    window.history.back();
+  }, []);
+
+  return (
+    <ExitAppDialog
+      open={showExitDialog}
+      onCancel={cancelExit}
+      onExit={confirmExit}
+    />
+  );
 }

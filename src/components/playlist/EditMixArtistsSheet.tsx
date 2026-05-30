@@ -7,6 +7,7 @@ import type { MixArtist } from "@/lib/playlist-meta";
 import { mixArtistsNeedResolve, resolveMixArtistsClient } from "@/lib/resolve-mix-artists";
 import { SpotifyArtist, artistImage } from "@/types/spotify";
 import { useToastStore } from "@/store/toast";
+import { useBackHandler } from "@/hooks/useBackHandler";
 
 interface Props {
   open: boolean;
@@ -25,6 +26,8 @@ export default function EditMixArtistsSheet({
   onClose,
   onSaved,
 }: Props) {
+  useBackHandler(open, onClose);
+
   const [artistQuery, setArtistQuery] = useState("");
   const [artistResults, setArtistResults] = useState<SpotifyArtist[]>([]);
   const [selectedArtists, setSelectedArtists] = useState<MixArtist[]>([]);
