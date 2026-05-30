@@ -63,6 +63,18 @@ export default function DownloadedClient() {
     toast("Removed from downloads", "success");
   };
 
+  const handleDeleteAll = async () => {
+    if (!tracks.length) return;
+    if (!window.confirm(`Delete all ${tracks.length} downloaded track${tracks.length !== 1 ? "s" : ""}?`)) return;
+    setClearingAll(true);
+    try {
+      await clearAllDownloads();
+      toast("All downloads removed", "success");
+    } finally {
+      setClearingAll(false);
+    }
+  };
+
   if (!hydrated) {
     return (
       <div className="flex items-center justify-center py-24">
