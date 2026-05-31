@@ -41,6 +41,29 @@
 			"isBackground": false
 		},
 		{
+			"label": "Dev server (device / HTTPS)",
+			"type": "shell",
+			"command": "pnpm",
+			"args": ["run", "dev:device"],
+			"isBackground": true,
+			"problemMatcher": {
+				"owner": "custom",
+				"pattern": { "regexp": "^$" },
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "Starting",
+					"endsPattern": "Ready|Local:"
+				}
+			}
+		},
+		{
+			"label": "Android: install debug APK",
+			"type": "shell",
+			"command": "pnpm",
+			"args": ["run", "android:install-debug"],
+			"isBackground": false
+		},
+		{
 			"label": "Deploy to Vercel Production After Fixes",
 			"type": "shell",
 			"command": "vercel",
