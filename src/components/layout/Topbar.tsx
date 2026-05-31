@@ -6,7 +6,7 @@ import Image from "next/image";
 import { X, User, Settings, Bell, Loader2, RefreshCw } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { APP_NAME, APP_TAGLINE } from "@/lib/branding";
-import { SPOTIFY_SCOPES } from "@/lib/spotify-scopes";
+import { SPOTIFY_SIGN_IN_OPTIONS } from "@/lib/spotify-auth-client";
 import { useBackHandler } from "@/hooks/useBackHandler";
 
 function SettingsModal({ onClose }: { onClose: () => void }) {
@@ -16,11 +16,12 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
   const [notifMessage, setNotifMessage] = useState<string | null>(null);
 
   const reconnectSpotify = () => {
-    void signIn(
-      "spotify",
-      { callbackUrl: window.location.href },
-      { scope: SPOTIFY_SCOPES, show_dialog: "true" }
-    );
+    void signIn("spotify", { callbackUrl: window.location.href }, SPOTIFY_SIGN_IN_OPTIONS);
+  };
+
+  const switchSpotifyAccount = async () => {
+    await signOut({ redirect: false });
+    void signIn("spotify", { callbackUrl: window.location.origin + "/" }, SPOTIFY_SIGN_IN_OPTIONS);
   };
 
   useEffect(() => {
@@ -185,6 +186,14 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
             {notifMessage && <p className="text-xs text-white/50 mt-2">{notifMessage}</p>}
           </div>
 
+          <button
+            type="button"
+            onClick={() => void switchSpotifyAccount()}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-white/80 hover:bg-white/[0.06] transition-colors text-sm font-medium"
+          >
+            <RefreshCw size={15} />
+            Switch Spotify account
+          </button>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#E8282B] hover:bg-[#E8282B]/10 transition-colors text-sm font-medium"

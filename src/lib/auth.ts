@@ -2,7 +2,15 @@ import NextAuth from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import Spotify from "next-auth/providers/spotify";
 import { authConfig } from "./auth.config";
+import { getMissingAuthEnv } from "./auth-env";
 import { SPOTIFY_SCOPES } from "./spotify-scopes";
+
+const missingAuthEnv = getMissingAuthEnv();
+if (missingAuthEnv.length > 0) {
+  console.error(
+    `[auth] Missing environment variables: ${missingAuthEnv.join(", ")}. Login will fail with Configuration error.`
+  );
+}
 
 type SpotifyToken = JWT & {
   accessToken?: string;
@@ -50,7 +58,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       checks: ["state"],
       authorization: {
         url: "https://accounts.spotify.com/authorize",
-        params: { scope: SPOTIFY_SCOPES },
+        params: { scope: SPOTIFY_SCOPES, show_dialog: "true" },
       },
     }),
   ],

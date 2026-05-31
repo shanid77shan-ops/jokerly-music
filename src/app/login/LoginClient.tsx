@@ -1,22 +1,35 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { APP_NAME, APP_TAGLINE } from "@/lib/branding";
-import { SPOTIFY_SCOPES } from "@/lib/spotify-scopes";
+import { SPOTIFY_SIGN_IN_OPTIONS } from "@/lib/spotify-auth-client";
+
+function loginErrorMessage(code: string | null): string | null {
+  if (!code) return null;
+  if (code === "Configuration") {
+    return "Server auth is not configured. In Vercel, set AUTH_SECRET, SPOTIFY_CLIENT_ID, and SPOTIFY_CLIENT_SECRET, then redeploy.";
+  }
+  if (code === "AccessDenied") {
+    return "Spotify denied access. Add your email in Spotify Developer → User Management (Development mode), then try again.";
+  }
+  return `Sign-in failed (${code}). Try again or use Switch account in settings.`;
+}
 
 export default function LoginClient() {
+  const searchParams = useSearchParams();
+  const authError = useMemo(
+    () => loginErrorMessage(searchParams.get("error")),
+    [searchParams]
+  );
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     setLoading(true);
-    await signIn(
-      "spotify",
-      { callbackUrl: `${window.location.origin}/` },
-      { scope: SPOTIFY_SCOPES }
-    );
+    await signIn("spotify", { callbackUrl: `${window.location.origin}/` }, SPOTIFY_SIGN_IN_OPTIONS);
   };
 
   return (
@@ -52,6 +65,15 @@ export default function LoginClient() {
           ))}
         </div>
 
+        {authError ? (
+          <div
+            className="rounded-xl px-4 py-3 text-left text-xs leading-relaxed border border-red-500/30"
+            style={{ background: "rgba(232,40,43,0.12)", color: "rgba(255,200,200,0.95)" }}
+          >
+            {authError}
+          </div>
+        ) : null}
+
         {/* Login button */}
         <button
           onClick={handleLogin}
@@ -71,6 +93,9 @@ export default function LoginClient() {
           {loading ? "Connecting..." : "Continue with Spotify"}
         </button>
 
+        <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.35)" }}>
+          Each person signs in with their own Spotify account. Playlists, likes, and pins are saved per account.
+        </p>
         <p className="text-xs" style={{ color: "rgba(255,255,255,0.22)" }}>
           Powered by Spotify & Last.fm
         </p>

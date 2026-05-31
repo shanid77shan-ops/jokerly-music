@@ -10,7 +10,7 @@ import { usePlayerStore, PlayableTrack } from "@/store/player";
 import ArtistSheet from "@/components/music/ArtistSheet";
 import { SpotifyArtist } from "@/types/spotify";
 import TransferResultDialog, { TransferResult } from "@/components/spotify/TransferResultDialog";
-import { SPOTIFY_SCOPES } from "@/lib/spotify-scopes";
+import { SPOTIFY_SIGN_IN_OPTIONS } from "@/lib/spotify-auth-client";
 
 export default function LikedClient() {
   const router = useRouter();
@@ -25,11 +25,7 @@ export default function LikedClient() {
   useEffect(() => { load(); }, [load]);
 
   const continueWithSpotify = useCallback(() => {
-    void signIn(
-      "spotify",
-      { callbackUrl: window.location.href },
-      { scope: SPOTIFY_SCOPES, show_dialog: "true" }
-    );
+    void signIn("spotify", { callbackUrl: window.location.href }, SPOTIFY_SIGN_IN_OPTIONS);
   }, []);
 
   const playSong = (song: LikedSong, index: number) => {
