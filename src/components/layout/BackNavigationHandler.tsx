@@ -9,13 +9,15 @@ import { pushHistoryEntry } from "@/lib/back-history";
 import ExitAppDialog from "@/components/layout/ExitAppDialog";
 
 function closePlayerOverlays(): boolean {
-  const { isQueueOpen, isPlayerExpanded } = usePlayerStore.getState();
+  const { isQueueOpen, isPlayerExpanded, isPlaying } = usePlayerStore.getState();
   if (isQueueOpen) {
     usePlayerStore.setState({ isQueueOpen: false });
+    void usePlayerStore.getState().maintainPlayback(isPlaying);
     return true;
   }
   if (isPlayerExpanded) {
     usePlayerStore.setState({ isPlayerExpanded: false });
+    void usePlayerStore.getState().maintainPlayback(isPlaying);
     return true;
   }
   return false;
@@ -103,21 +105,29 @@ export default function BackNavigationHandler() {
     }
 
     if (stack.length > 1) {
+      const wasPlaying = usePlayerStore.getState().isPlaying;
       stack.pop();
       const previous = stack[stack.length - 1];
       skipStackSyncRef.current = true;
       setShowExitDialog(false);
       router.push(previous);
       stayInApp();
+      window.setTimeout(() => {
+        void usePlayerStore.getState().maintainPlayback(wasPlaying);
+      }, 80);
       return;
     }
 
     if (!isHomePath(pathname)) {
+      const wasPlaying = usePlayerStore.getState().isPlaying;
       skipStackSyncRef.current = true;
       stackRef.current = ["/"];
       setShowExitDialog(false);
       router.push("/");
       stayInApp();
+      window.setTimeout(() => {
+        void usePlayerStore.getState().maintainPlayback(wasPlaying);
+      }, 80);
       return;
     }
 

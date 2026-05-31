@@ -60,6 +60,7 @@ interface PlayerState {
   playIndex: (index: number) => void;
   pausePlayback: () => Promise<void>;
   resumePlayback: () => Promise<void>;
+  maintainPlayback: (resumeIfWasPlaying?: boolean) => Promise<void>;
   togglePlay: () => void;
   seek: (ratio: number) => void;
   stop: () => void;
@@ -95,6 +96,8 @@ interface SpotifyPlayer {
   pause: () => Promise<void>;
   setVolume: (volume: number) => Promise<void>;
   getVolume: () => Promise<number>;
+  getCurrentState: () => Promise<SpotifyPlayerState | null>;
+  activateElement?: () => Promise<void>;
 }
 
 interface SpotifyPlayerCtor {
@@ -145,6 +148,8 @@ let pendingPlayOnReadyIndex: number | null = null;
 let playRetryTimer: ReturnType<typeof setTimeout> | null = null;
 let playRetryIndex: number | null = null;
 let playRetryCount = 0;
+let playIntentIndex: number | null = null;
+let notReadyTimer: ReturnType<typeof setTimeout> | null = null;
 const MAX_PLAY_RETRIES = 4;
 
 function clearPlayRetry(resetState = true) {
@@ -158,6 +163,8 @@ function clearPlayRetry(resetState = true) {
 }
 
 function schedulePlayRetry(index: number) {
+  if (playIntentIndex !== index) return;
+
   if (playRetryIndex !== index) {
     playRetryIndex = index;
     playRetryCount = 0;
@@ -165,6 +172,7 @@ function schedulePlayRetry(index: number) {
 
   if (playRetryCount >= MAX_PLAY_RETRIES) {
     clearPlayRetry(true);
+    playIntentIndex = null;
     return;
   }
 
@@ -173,7 +181,12 @@ function schedulePlayRetry(index: number) {
   clearPlayRetry(false);
   playRetryTimer = setTimeout(() => {
     const snapshot = usePlayerStore.getState();
-    if (userPausedIntent || snapshot.isPlaying || snapshot.queueIndex !== index) {
+    if (
+      userPausedIntent ||
+      snapshot.isPlaying ||
+      snapshot.queueIndex !== index ||
+      playIntentIndex !== index
+    ) {
       clearPlayRetry(true);
       return;
     }
@@ -435,17 +448,14 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
 
     player.addListener("ready", (payload) => {
       const ready = payload as { device_id: string };
+      if (notReadyTimer) {
+        clearTimeout(notReadyTimer);
+        notReadyTimer = null;
+      }
       clearPlayRetry(true);
       set({ deviceId: ready.device_id, isPlayerReady: true, sdkError: null });
-      // Do NOT call /me/player with play:false here — it pauses any currently
-      // active Spotify session on the user's account. The device_id is already
-      // embedded in every subsequent /me/player/play call, which activates this
-      // device automatically when the user first plays a track.
+      void player.setVolume(get().volume).catch(() => {});
 
-      // Recover playback after route hard reloads: if app believed we were
-      // playing and we still have a valid queue item, resume it on this device.
-      const snapshot = get();
-      const idx = snapshot.queueIndex;
       if (pendingPlayOnReadyIndex !== null) {
         const queuedIndex = pendingPlayOnReadyIndex;
         pendingPlayOnReadyIndex = null;
@@ -453,11 +463,17 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
         return;
       }
 
+      void get().maintainPlayback(true);
     });
 
     player.addListener("not_ready", () => {
-      clearPlayRetry(true);
-      set({ deviceId: null, isPlayerReady: false });
+      if (notReadyTimer) clearTimeout(notReadyTimer);
+      notReadyTimer = setTimeout(() => {
+        notReadyTimer = null;
+        if (!get().player) return;
+        clearPlayRetry(true);
+        set({ deviceId: null, isPlayerReady: false });
+      }, 900);
     });
 
     player.addListener("player_state_changed", (state) => {
@@ -488,6 +504,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
 
       if (nextState && !nextState.paused) {
         clearPlayRetry();
+        playIntentIndex = null;
         userPausedIntent = false;
       }
     });
@@ -669,18 +686,19 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
 
     pendingPlayOnReadyIndex = null;
     userPausedIntent = false;
+    playIntentIndex = index;
     clearPlayRetry(index !== playRetryIndex);
     ignorePausedUntil = Date.now() + 1800;
     const hasActivePlayback = !!currentTrack && isPlaying && queueIndex !== index;
     set({
       pendingIndex: index,
       isTransitioning: true,
+      queueIndex: index,
+      currentTrack: nextTrack,
       ...(hasActivePlayback
         ? {}
         : {
-            queueIndex: index,
-            currentTrack: nextTrack,
-            isPlaying: true,
+            isPlaying: false,
             progressMs: 0,
             durationMs: nextTrack.durationMs ?? 0,
           }),
@@ -720,6 +738,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
       return;
     }
 
+    playIntentIndex = null;
     set({
       queueIndex: index,
       currentTrack: nextTrack,
@@ -746,6 +765,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     if (!player || !isPlaying) return;
 
     userPausedIntent = true;
+    playIntentIndex = null;
     suppressAutoResumeUntil = Date.now() + 60_000;
     clearPlayRetry(true);
     ignorePausedUntil = 0;
@@ -758,6 +778,59 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
 
     set({ isPlaying: false, isTransitioning: false, pendingIndex: null });
     updateMediaSessionState(false);
+  },
+
+  maintainPlayback: async (resumeIfWasPlaying = false) => {
+    if (Date.now() < suppressAutoResumeUntil) return;
+
+    const { player, volume, isOfflinePlayback, currentTrack, queueIndex, queue } = get();
+    if (isOfflinePlayback) {
+      if (resumeIfWasPlaying && !isOfflinePlaying()) {
+        resumeOfflinePlayback();
+        set({ isPlaying: true, isTransitioning: false, pendingIndex: null });
+        updateMediaSessionState(true);
+      }
+      return;
+    }
+
+    if (!player) return;
+    requestAudioFocus();
+
+    try {
+      if (player.activateElement) await player.activateElement();
+    } catch { /* ignore */ }
+
+    await player.setVolume(volume).catch(() => {});
+
+    if (_iosAudioCtx?.state === "suspended") {
+      await _iosAudioCtx.resume().catch(() => {});
+    }
+
+    const state = await player.getCurrentState().catch(() => null);
+    if (state) {
+      hydrateFromSdkState(state);
+    }
+
+    const shouldResume =
+      resumeIfWasPlaying &&
+      !userPausedIntent &&
+      !!get().currentTrack?.uri &&
+      (!state || state.paused);
+
+    if (!shouldResume) return;
+
+    const track = currentTrack ?? (queueIndex >= 0 ? queue[queueIndex] : null);
+    if (!track?.uri) return;
+
+    userPausedIntent = false;
+    suppressAutoResumeUntil = 0;
+    ignorePausedUntil = Date.now() + 1800;
+
+    try {
+      await player.togglePlay();
+      set({ isPlaying: true, isTransitioning: false, pendingIndex: null });
+      updateMediaSessionState(true);
+    } catch { /* ignore */ }
   },
 
   resumePlayback: async () => {
@@ -812,6 +885,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
   stop: async () => {
     const { player } = get();
     userPausedIntent = true;
+    playIntentIndex = null;
     suppressAutoResumeUntil = Date.now() + 60_000;
     pendingPlayOnReadyIndex = null;
     clearPlayRetry();
@@ -986,6 +1060,7 @@ export const usePlayerStore = create<PlayerState>()(persist((set, get) => ({
     playIndex: state.playIndex,
     pausePlayback: state.pausePlayback,
     resumePlayback: state.resumePlayback,
+    maintainPlayback: state.maintainPlayback,
     togglePlay: state.togglePlay,
     seek: state.seek,
     stop: state.stop,

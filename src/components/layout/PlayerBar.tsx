@@ -151,6 +151,22 @@ export default function PlayerBar() {
     initializePlayer(session.accessToken);
   }, [session?.accessToken, sessionError, initializePlayer]);
 
+  useEffect(() => {
+    const syncOnReturn = () => {
+      if (document.visibilityState !== "visible") return;
+      void usePlayerStore.getState().maintainPlayback(usePlayerStore.getState().isPlaying);
+    };
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) syncOnReturn();
+    };
+    document.addEventListener("visibilitychange", syncOnReturn);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", syncOnReturn);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
+
   const fetchAndPlay = useCallback(async (index: number, options?: { smooth?: boolean }) => {
     if (index < 0 || index >= queue.length || fetchingRef.current) return;
     const track = queue[index];
@@ -230,6 +246,8 @@ export default function PlayerBar() {
 
   useEffect(() => {
     if (!endedToken) return;
+    const { progressMs: pos, durationMs: dur } = usePlayerStore.getState();
+    if (dur > 0 && pos < dur * 0.85) return;
     const nextIndex = getNextIndex();
     if (nextIndex === null) return;
     fetchAndPlay(nextIndex);
@@ -240,7 +258,7 @@ export default function PlayerBar() {
   }, [queueIndex, currentTrack?.uri]);
 
   useEffect(() => {
-    if (!crossfadeEnabled || !isPlaying || isTransitioning || durationMs <= 0 || progressMs <= 0) return;
+    if (!crossfadeEnabled || !isPlaying || isTransitioning || durationMs <= 0 || progressMs < 8000) return;
     const nextIndex = getNextIndex();
     if (nextIndex === null || nextIndex === queueIndex) return;
 
@@ -420,13 +438,21 @@ export default function PlayerBar() {
       {expanded && (
         <div className="fixed inset-0 z-50 p-4 sm:p-6 flex items-end sm:items-center justify-center"
           style={{ background: "rgba(6,4,16,0.96)", backdropFilter: "blur(28px)" }}
-          onClick={() => usePlayerStore.setState({ isPlayerExpanded: false })}>
+          onClick={() => {
+            const wasPlaying = usePlayerStore.getState().isPlaying;
+            usePlayerStore.setState({ isPlayerExpanded: false });
+            void usePlayerStore.getState().maintainPlayback(wasPlaying);
+          }}>
           <div className="w-full max-w-sm max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="rounded-3xl border border-white/[0.08] p-5 shadow-2xl shadow-black/80 flex flex-col min-h-0 max-h-full overflow-hidden"
               style={{ background: "var(--surface)" }}>
               <div className="mb-4 flex items-center justify-between shrink-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">Now Playing</p>
-                <button onClick={() => usePlayerStore.setState({ isPlayerExpanded: false })}
+                <button onClick={() => {
+                  const wasPlaying = usePlayerStore.getState().isPlaying;
+                  usePlayerStore.setState({ isPlayerExpanded: false });
+                  void usePlayerStore.getState().maintainPlayback(wasPlaying);
+                }}
                   className="rounded-xl p-2 text-white/30 hover:bg-white/[0.07] hover:text-white transition-colors">
                   <ChevronDown size={18} />
                 </button>
