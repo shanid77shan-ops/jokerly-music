@@ -61,8 +61,8 @@ export default function FloatingNav() {
         aria-label="Main navigation"
       >
         {btn("/", <Home size={17} />, "Home")}
-        {btn("/playlists", <ListMusic size={17} />, "Lists")}
-        {btn("/downloaded", <Download size={17} />, "Saved")}
+        {btn("/playlists", <ListMusic size={17} />, "Playlist")}
+        {btn("/downloaded", <Download size={17} />, "Downloads")}
         {btn("/liked", <Heart size={17} />, "Liked")}
       </nav>
     </div>
